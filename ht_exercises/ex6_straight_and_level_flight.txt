@@ -1,0 +1,101 @@
+# messages here
+msgcode	delay	message
+# Introduction and initial climb
+HI	1	Welcome to exercise 6
+GROUNDINTRO	1	"Today we're going to practice maintaining a given airspeed and altitude. You're on the ground so lets take off and climb to " .. tgt_alt .. " feet above sea level"
+AIRINTRO	1	"Today we're going to practice maintaining a given airspeed and altitude. You're already in the air, so lets keep a similar altitude " .. climb_or_descend(ELEVATION*m2f,tgt_alt) .. " to do this exercise at " .. tgt_alt .. " feet above sea level"
+AIRINTROLOW	1	"Today we're going to practice maintaining a given airspeed and altitude. You're in the air, but a little low, lets climb to " .. tgt_alt .. " feet above sea level"
+REMINDER	30	"Remember " .. tgt_airspeed .. " knots and " .. tgt_alt .. " feet"
+TOOLOW	20	"Increase the collective to climb to " .. tgt_alt .. " feet"
+TOOLOW1	20	"You've dropped a little. Increase the collective to climb back to " .. tgt_alt .. " feet"
+TOOHIGH1	20	"You've climbed too high. Lower the collective to descent down to " .. tgt_alt .. " feet"
+CLIMBTOOSLOW	20	Increase your airspeed to about 50 to 70 knots while climbing
+CLIMBTOOFAST	20	reduce your airspeed to about 50 to 70 knots while climbing
+DESCENTTOOFAST	20	You've increased your airspeed too much, try not to dive forwards but lower the collective instead
+DESCENTTOOSLOW	20	Keep your airspeed above 50 knots, otherwise you might enter the dangerous vortex ring state when descending
+# Now at the target altitude, try and maintain and airspeed and altitude
+TGT1	5	"Excellent. You've reached the target altitude of " .. tgt_alt .. " feet. Now increase your airspeed to " .. tgt_airspeed .. " knots by smoothly pushing the cyclic forwards"
+TOOSLOW	5	A little slow. Adjust your attitude to lower the nose by pushing the cyclic forwards and maintaining the new attitude
+TOOFAST	5	A little fast. Adjust your attitude to rase the nose by easing the cyclic back a little and keeping the new attitude
+RIGHTAIRSPEED	5	Our airspeed is good. Try and maintain attitude to keep this airspeed
+SCORINGSTART	5	Your airspeed and altitude are good. I'm going to observe you for the next 30 seconds
+TIP1	300	Your airspeed and vertical attitude are linked. As you lower the nose to gain speed there is a smaller vertical component of lift so you need to raise the collective to compensate
+TIP2	300	Try not to focus to much on the airspeed indicator but on the horizon, so you maintain the same attitude. With time you will be able to recognise that a given attitude will correspond to an airspeed
+TIP3	300	Always operate the controls smoothly and allow the helicopter time to settle down
+TIP4	300	When you level off after a climb set the attitude, lower power, or collective and then trim. This has the mnemomic A.P.T.
+TIP5	300	When climbing and descending we can use the mnenomic P.A.T., standing for power, attitude, trim. So the climb we raise power, or collective in a helicopter, set the attitude and then trim.
+TIP6	300	When descending more than 300 feet per minute keep your airspeed over 50 knots otherwise you might be in danger of vortex ring state. This is when the helicopter descends through its own downdraft which leads to instability and a descent thats difficult to arrest
+TIP7	300	You are flying the Cabri G2, its the helicopter I find the most fun to fly
+FINISHED	30	"Well done. You scored " .. math.floor(sc_airspeed) .. "% for airspeed and " .. math.floor(sc_alt) .. "% for altitude"
+SCORINGGOOD	10	Good. Keep it going
+SCORINGBAD	10	"Keep going. Remember " .. tgt_airspeed .. " knots and " .. tgt_alt .. " feet"
+DIFFERENTAIRSPEED	1	"Okay now we're going to try to do this at " .. tgt_airspeed .. " knots. Adjust to the new airspeed and I'll score you again"
+TAKECARESLOWINGDOWN	20	When you need to reduce airspeed significantly you need to reduce collective to compensate for the increase lift as the helicopter is more level
+TAKECARESPEEDINGUP	20	When you need to increase airspeed significantly you need to raise the collective to compensate for the reduced lift as the nose drops
+END	5	Okay. Well done. Lets end the exercise there. Keep practicing until you are really happy with your performance, or try another exercise
+PEDALS	60	Use your pedals to keep facing forwards, try to keep the black blob in the centre of the yellow strip
+LEFTPEDAL	10	Use some left pedal
+RIGHTPEDAL	10	Use some right pedal
+BIGLEFTPEDAL	10	Large left pedal input needed
+BIGRIGHTPEDAL	10	Large right pedal input needed
+PEDALS1	6	"yaw " .. math.floor(yaw)
+PEDALGOOD	20	Good you've trimmed out the slip
+UNSAFE_BACKWARDS	5	Unsafe backwards
+UNSAFE_DROPPING	5	Unsafe drop
+UNSAFE_YAW	5	Unsafe yaw
+UNSAFE_YAWRATE	5	Unsafe yaw rate
+UNSAFE_PITCH	5	Unsafe pitch
+UNSAFE_PITCHRATE	5	Unsafe pitch rate
+UNSAFE_ROLL	5	Unsafe roll
+UNSAFE_ROLLRATE	5	Unsafe roll rate
+UNSAFE_AIRSPEED	5	Unsafe airspeed
+
+# rules climb here
+from	to	prob	condition	msgcode	command
+init	intro	1	true	HI	tgt_alt=1000; tolm=100; times=0
+init	intro	1	true	HI	tgt_alt=math.floor((ELEVATION*m2f+750)*0.01)*100; tolm=100; print(tgt_alt); times=0; check_pedals=false
+intro	alt	1	(y_agl<5)	GROUNDINTRO
+intro	alt	1	(y_agl<200)and(y_agl>5)	AIRINTROLOW
+intro	alt	1	(y_agl>200)	AIRINTRO	tgt_alt=math.floor(math.max(ELEVATION*0.01*m2f,0.01*((ELEVATION-y_agl)*m2f+750)))*100
+alt	alt	1	(ELEVATION*m2f<tgt_alt*f2m)and(DELEVATION<100)	TOOLOW
+alt	alt	1	(airspeed<50)and(DELEVATION>0)	CLIMBTOOSLOW
+alt	alt	1	(airspeed>70)and(DELEVATION>0)	CLIMBTOOFAST
+alt	alt	1	(airspeed>100)and(DELEVATION<-50)	DESCENTTOOFAST
+alt	alt	1	(airspeed<40)and(DELEVATION<-50)	DESCENTTOOSLOW
+alt	tgt1	1	(ELEVATION*m2f>tgt_alt-tolm)and(ELEVATION*m2f<tgt_alt+tolm)	TGT1	tgt_airspeed=80
+tgt1	tgt1	0.2	true	REMINDER
+tgt1	tgt1	0.2	(DELEVATION>100)and(tgt_airspeed<airspeed-10)	TAKECARESLOWINGDOWN
+tgt1	tgt1	0.2	(DELEVATION<-100)and(tgt_airspeed>airspeed+10)	TAKECARESPEEDINGUP
+tgt1	tgt1	0.2	(airspeed<tgt_airspeed-5)	TOOSLOW
+tgt1	tgt1	0.2	(airspeed>tgt_airspeed+5)	TOOFAST
+#tgt1	tgt1	1	(airspeed>tgt_airspeed-5)and(airspeed<tgt_airspeed+5)	RIGHTAIRSPEED
+tgt1	tgt2	1	(math.abs(airspeed-tgt_airspeed)<5)and(math.abs(tgt_alt-ELEVATION*m2f)<50)	SCORINGSTART	T_start=T; N=0; sc_airspeed=0; sc_alt=0
+tgt1	tgt1	0.2	(ELEVATION*m2f<tgt_alt-tolm)	TOOLOW1
+tgt1	tgt1	0.2	(ELEVATION*m2f>tgt_alt+tolm)	TOOHIGH1
+tgt1	tgt1	0.01	true	TIP1
+tgt1	tgt1	0.01	true	TIP2
+tgt1	tgt1	0.01	true	TIP3
+tgt1	tgt1	0.01	true	TIP4
+tgt1	tgt1	0.01	true	TIP5
+tgt1	tgt1	0.01	true	TIP6
+tgt1	tgt1	0.01	true	TIP7
+tgt1	tgt1	0.01	(math.abs(yaw)>2)and(not check_pedals)	PEDALS	checkpedals=true
+tgt1	tgt1	1	(yaw>4)and(yaw<10)	LEFTPEDAL	checkpedals=true
+tgt1	tgt1	1	(yaw<-4)and(yaw>-10)	RIGHTPEDAL	checkpedals=true
+tgt1	tgt1	1	yaw>10	BIGLEFTPEDAL	checkpedals=true
+tgt1	tgt1	1	yaw<-10	BIGRIGHTPEDAL	checkpedals=true
+tgt1	tgt1	1	(math.abs(yaw)<4)and(checkpedals)	PEDALGOOD	checkpedals=false
+tgt2	tgt2	(math.abs(airspeed-tgt_airspeed)<5)and(math.abs(tgt_alt-ELEVATION*m2f)<50)	true	SCORINGGOOD	sc_airspeed=sc_airspeed+score(tgt_airspeed,5,airspeed); sc_alt=sc_alt+score(tgt_alt,100,ELEVATION*m2f); N=N+1
+tgt2	tgt2	(math.abs(airspeed-tgt_airspeed)>5)or(math.abs(tgt_alt-ELEVATION*m2f)>50)	true	SCORINGBAD	sc_airspeed=sc_airspeed+score(tgt_airspeed,5,airspeed); sc_alt=sc_alt+score(tgt_alt,100,ELEVATION*m2f); N=N+1
+tgt2	tgt3	1	(T>T_start+30)	FINISHED	sc_airspeed=sc_airspeed/N; sc_alt=sc_alt/N; times=times+1
+tgt3	tgt1	1	(times<4)	DIFFERENTAIRSPEED	tgt_airspeed=math.random(50,100)
+tgt3	end	1	(times==4)	END
+*	*	1	(airspeed>110)	UNSAFE_AIRSPEED
+*	*	1	(DELEVATION<-500)	UNSAFE_DROPPING
+*	*	1	(airspeed<-10)	UNSAFE_BACKWARDS
+*	*	1	(math.abs(yaw)>30)and(airspeed>10)	UNSAFE_YAW
+*	*	1	(math.abs(pitch)>30)	UNSAFE_PITCH
+*	*	1	(math.abs(roll)>70)and(airspeed<50)	UNSAFE_ROLL
+*	*	1	(math.abs(yaw_rate)>180)	UNSAFE_YAWRATE
+*	*	1	(math.abs(roll_rate)>45)	UNSAFE_ROLLRATE
+*	*	1	(math.abs(pitch_rate)>45)	UNSAFE_PITCHRATE

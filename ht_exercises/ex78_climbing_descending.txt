@@ -1,0 +1,39 @@
+msgcode	delay	message
+WELCOME	1	Welcome to exercises 7 and 8
+INTRO	1	Today we are going to practice climbing and descending. We are going to learn the APT and PAT methods for ascending and descending
+TAKEOFF	1	"Lets take off, increase our airspeed to about 60 knots and climb to " .. tgt_alt
+OKAY	1	We are really underway, lets start the exercise
+CLIMBINTRO1	1	To climb we need to have excess power available, which may mean we need to reduce airspeed first
+CLIMBINTRO2	1	So if necessary we change attitude to reduce airspeed first, then increase power by raising the collective and then trim to correct airspeed and rate of climb. This gives the acronym APT
+CLIMBINTRO3	1	For this climb we will aim for an airspeed of 60 knots and a climb rate of " .. tgt_yinc .. " feet per minute for this climb. Also remember to use the pedals to keep us forwards when adjusting the collective changes torque
+TOOSLOW	10	Put some forward pressure on the cyclic in increase airspeed
+TOOFAST	10	Put some backward pressure on the cyclic to reduce airspeed
+RATEHI	10	"Climb rate is over the target of " .. tgt_yinc .. " feet per minute. Reduce collective"
+RATELO	10	"Climb rate is under the target of " .. tgt_yinc .. " feet per minute. Increase collective"
+LEVELOFF	15	Now we have only 10% of the climb rate to reach our target so level off by again via attitude, power and then trim. Aim to increase airspeed to 80 knots when leveling off
+CLIMBGOOD	30	Your climb rate and airspeed are good
+TOC	30	You've reached the top of climb, or TOC if you're being fancy
+GOODLEVELTIME	40	"Well done you leveled off well in " .. math.floor(t-t_leveloff) .. " seconds"
+GOODLEVEL	40	"Well done you leveled off"
+
+from	to	prob	condition	msgcode	command
+init	intro	1	true	WELCOME	tgt_alt=1000; tgt_airspeed=60; tgt_yinc=500
+intro	alt	1	true	INTRO
+#alt	climb	1	(y_agl<5)	TAKEOFF
+#alt	end	1	(y_agl>5)	climb1
+alt	check	1	true	TAKEOFF
+check	check	1	(airspeed<50)	TOOSLOW
+check	climb1	1	(airspeed>50)	OKAY
+climb1	climb2	1	true	CLIMBINTRO1	t_leveloff=nil
+climb2	wait1	1	true	CLIMBINTRO2	t_start=t
+wait1	climb3	1	t>t_start+5
+# the actual climb
+climb3	climb3	1	(airspeed<tgt_airspeed-5)	TOOSLOW
+climb3	climb3	1	(airspeed>tgt_airspeed+5)	TOOFAST
+climb3	climb3	1	(yinc*m2f>tgt_yinc*1.1)	RATEHI
+climb3	climb3	1	(yinc*m2f<tgt_yinc*0.9)and(ALTITUDE*m2f<tgt_alt-100)	RATELO
+climb3	climb3	1	math.abs(ALTITUDE*m2f+yinc*m2f*0.1-tgt_alt)<10	LEVELOFF	t_leveloff=t
+climb3	climb3	0.01	math.abs(tgt_airspeed-airspeed)<5 and math.abs(tgt_yinc-yinc)<yinc*0.1	CLIMBGOOD
+climb3	level1	1	(ALTITUDE*m2f>tgt_alt-50)and(ALTITUDE*m2f<tgt_alt+50)	TOC	tgt_airspeed=80
+level1	level1	1	t_leveloff and math.abs(yinc)<50 and math.abs(tgt_airspeed-airspeed)<5 and math.abs(ALTITUDE*m2f-tgt_alt)<50	GOODLEVELTIME
+level1	level1	1	(t_leveloff==nil) and math.abs(yinc)<50 and math.abs(tgt_airspeed-airspeed)<5 and math.abs(ALTITUDE*m2f-tgt_alt)<50	GOODLEVEL

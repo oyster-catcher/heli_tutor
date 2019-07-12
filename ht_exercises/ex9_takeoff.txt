@@ -1,0 +1,37 @@
+msgcode	delay	message
+HI	10	Welcome to Exercise 9
+INTRO1	10	Today we are going to practice a safe take off by keeping outside of the so called dead mans curve, that is the region whereby an engine failure would not be recoverable by autorotation. Such regions are at low altitude and low airspeed
+INTRO2	10	To safely takeoff we need to gather airspeed close to the ground and only climb once we reach 50 knots
+INTRO3	10	Before we increase airspeed we need to come to a low hover and check for traffic left and right. Come to a hover
+LAND	30	This exercise should be started when landing. I'll wait for you to land
+GATHERAIRSPEED	10	Good keep gathering airspeed
+TRANSLIFT	10	Watch out for transitional lift which may make us climb, so lower collective or push the cyclic forwards to keep low
+FASTENOUGH	10	You've reached 50 knots so you can now start climbing. Well done
+LETSGO	10	All clear, push the cyclic forwards to gather airspeed. Keep low
+GOODHOVER	5	"Good hovering, groundspeed " .. math.floor(groundspeed) .. " vert " .. math.floor(ELEVATION) .. " alt " .. math.floor(y_agl)
+OUTOFHOVER1	10	You've climbed out of the low hover, descend
+OUTOFHOVER2	10	"You are drifting to much, try and stabilise the hover, ground speed " .. math.floor(groundspeed)
+TOOHIGHSLOW	5	Too high with insufficient airspeed
+GOODLEFTTURN	10	Take a good look left
+GOODRIGHTTURN	10	Take a good look right
+
+from	to	prob	condition	msgcode	command
+check	check	1	y_agl>5	LAND
+check	intro1	1	y_agl<5	HI
+#check	hover1	1	y_agl<5	HI
+intro1	intro2	1	true	INTRO1
+intro2	intro3	1	true	INTRO2
+intro3	hover1	1	true	INTRO3
+#hover1	turns	1	(y_agl>0.5)and(y_agl<7)and(groundspeed<4)	GOODHOVER	left=false; right=false; dir=mag_psi
+hover1	turns	1	(y_agl>0.5)and(y_agl<7)and(groundspeed<4)and(math.abs(DELEVATION)<20)	GOODHOVER	left=true; right=true; dir=mag_psi
+hover1	hover1	1	y_agl>7	OUTOFHOVER1
+hover1	hover1	1	groundspeed>5	OUTOFHOVER2
+turns	turns	1	heading_in_range(mag_psi,dir-120,dir-80)and(y_agl<7)	GOODLEFTTURN	left=true
+turns	turns	1	heading_in_range(mag_psi,dir+80,dir+120)and(y_agl<7)	GOODRIGHTTURN	right=true
+turns	hover1	1	(y_agl>7)	OUTOFHOVER1
+turns	hover1	1	groundspeed>5	OUTOFHOVER2
+turns	takeoff	1	(left)and(right)and(mag_psi>dir-15)and(mag_psi<dir+15)	LETSGO
+takeoff	takeoff	1	(y_agl<7)and(airspeed<50)	GATHERAIRSPEED
+takeoff	takeoff	1	(y_agl<7)and(airspeed>10)and(airspeed<20)	TRANSLIFT
+takeoff	takeoff	1	(airspeed>50)and(y_agl<7)	FASTENOUGH
+takeoff	takeoff	1	(y_agl>7)and(airspeed<50)	TOOHIGHSLOW
