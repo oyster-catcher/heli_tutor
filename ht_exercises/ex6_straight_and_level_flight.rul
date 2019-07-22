@@ -1,0 +1,49 @@
+# rules climb here
+from	to	prob	condition	msgcode	command
+init	intro	1	true	HI	tgt_alt=1000; tolm=100; times=0
+init	intro	1	true	HI	tgt_alt=math.floor((alt_ft+750)*0.01)*100; tolm=100; print(tgt_alt); times=0; check_pedals=false
+intro	alt	1	(y_agl<5)	GROUNDINTRO
+intro	alt	1	(y_agl<200)and(y_agl>5)	AIRINTROLOW
+intro	alt	1	(y_agl>200)	AIRINTRO	tgt_alt=math.floor(math.max(alt_ft*0.01,0.01*((alt_ft-y_agl_ft)*750)))*100
+alt	alt	1	(alt_ft<tgt_alt*f2m)and(vh_ind_fpm<100)	TOOLOW
+alt	alt	1	(airspeed<50)and(vh_ind_fpm>0)	CLIMBTOOSLOW
+alt	alt	1	(airspeed>70)and(vh_ind_fpm>0)	CLIMBTOOFAST
+alt	alt	1	(airspeed>100)and(vh_ind_fpm<-50)	DESCENTTOOFAST
+alt	alt	1	(airspeed<40)and(vh_ind_fpm<-50)	DESCENTTOOSLOW
+alt	tgt1	1	(alt_ft>tgt_alt-tolm)and(alt_ft<tgt_alt+tolm)	TGT1	tgt_airspeed=80
+tgt1	tgt1	0.2	true	REMINDER
+tgt1	tgt1	0.2	(vh_ind_fpm>100)and(tgt_airspeed<airspeed-10)	TAKECARESLOWINGDOWN
+tgt1	tgt1	0.2	(vh_ind_fpm<-100)and(tgt_airspeed>airspeed+10)	TAKECARESPEEDINGUP
+tgt1	tgt1	0.2	(airspeed<tgt_airspeed-5)	TOOSLOW
+tgt1	tgt1	0.2	(airspeed>tgt_airspeed+5)	TOOFAST
+#tgt1 	 tgt1 	 1 	 (airspeed>tgt_airspeed-5)and(airspeed<tgt_airspeed+5) 	 RIGHTAIRSPEED
+tgt1	tgt2	1	(math.abs(airspeed-tgt_airspeed)<5)and(math.abs(tgt_alt-alt_ft)<50)	SCORINGSTART	T_start=T; N=0; sc_airspeed=0; sc_alt=0
+tgt1	tgt1	0.2	(alt_ft<tgt_alt-tolm)	TOOLOW1
+tgt1	tgt1	0.2	(alt_ft>tgt_alt+tolm)	TOOHIGH1
+tgt1	tgt1	0.01	true	TIP1
+tgt1	tgt1	0.01	true	TIP2
+tgt1	tgt1	0.01	true	TIP3
+tgt1	tgt1	0.01	true	TIP4
+tgt1	tgt1	0.01	true	TIP5
+tgt1	tgt1	0.01	true	TIP6
+tgt1	tgt1	0.01	true	TIP7
+tgt1	tgt1	0.01	(math.abs(yaw)>2)and(not check_pedals)	PEDALS	checkpedals=true
+tgt1	tgt1	1	(yaw>4)and(yaw<10)	LEFTPEDAL	checkpedals=true
+tgt1	tgt1	1	(yaw<-4)and(yaw>-10)	RIGHTPEDAL	checkpedals=true
+tgt1	tgt1	1	yaw>10	BIGLEFTPEDAL	checkpedals=true
+tgt1	tgt1	1	yaw<-10	BIGRIGHTPEDAL	checkpedals=true
+tgt1	tgt1	1	(math.abs(yaw)<4)and(checkpedals)	PEDALGOOD	checkpedals=false
+tgt2	tgt2	(math.abs(airspeed-tgt_airspeed)<5)and(math.abs(tgt_alt-alt_ft)<50)	true	SCORINGGOOD	sc_airspeed=sc_airspeed+score(tgt_airspeed,5,airspeed); sc_alt=sc_alt+score(tgt_alt,100,alt_ft); N=N+1
+tgt2	tgt2	(math.abs(airspeed-tgt_airspeed)>5)or(math.abs(tgt_alt-alt_ft)>50)	true	SCORINGBAD	sc_airspeed=sc_airspeed+score(tgt_airspeed,5,airspeed); sc_alt=sc_alt+score(tgt_alt,100,alt_ft); N=N+1
+tgt2	tgt3	1	(T>T_start+30)	FINISHED	sc_airspeed=sc_airspeed/N; sc_alt=sc_alt/N; times=times+1
+tgt3	tgt1	1	(times<4)	DIFFERENTAIRSPEED	tgt_airspeed=math.random(50,100)
+tgt3	end	1	(times==4)	END
+*	*	1	(airspeed>110)	UNSAFE_AIRSPEED
+*	*	1	(vh_ind_fpm<-500)	UNSAFE_DROPPING
+*	*	1	(airspeed<-10)	UNSAFE_BACKWARDS
+*	*	1	(math.abs(yaw)>30)and(airspeed>10)	UNSAFE_YAW
+*	*	1	(math.abs(pitch)>30)	UNSAFE_PITCH
+*	*	1	(math.abs(roll)>70)and(airspeed<50)	UNSAFE_ROLL
+*	*	1	(math.abs(yaw_rate)>180)	UNSAFE_YAWRATE
+*	*	1	(math.abs(roll_rate)>45)	UNSAFE_ROLLRATE
+*	*	1	(math.abs(pitch_rate)>45)	UNSAFE_PITCHRATE

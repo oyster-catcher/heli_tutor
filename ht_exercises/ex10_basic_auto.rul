@@ -1,0 +1,34 @@
+from	to	condition	prob	msgcode	command
+welcome	intro	true	1	WELCOME	restart();lo_rpm=510;hi_rpm=540 -- Cabri G2
+intro	start	true	1	INTRO
+#start 	 start 	 ground 	 1 	 GROUND
+start	start	true	1	ALT
+start	entry	y_agl*m2f>1000	1	FAIL	fail(); Ystart=y_agl;Tstart=T;sc_yaw=0;sc_airspeed=0;N=0;sc_rotor=0;sc_hover=0
+# entry with engine failure
+entry	entry	airspeed<40	1	ENTRYSLOW
+entry	entry	yaw<-10	1	RIGHTPEDAL
+entry	entry	yaw>10	1	LEFTPEDAL
+entry	entry	lo_rotor	1	ENTRYSLOWROTOR
+entry	descent	T>Tstart+4	1	DESCENT
+# descent stage
+descent	descent	true	1	SCORING	if (math.abs(airspeed-50)<10) then sc_airspeed=sc_airspeed+1;end;if (rotor_rpm>lo_rpm)and(rotor_rpm<hi_rpm) then sc_rotor=sc_rotor+1;end;N=N+1
+descent	descent	airspeed<40	1	SLOW	N=N+1
+descent	descent	airspeed>60	1	FAST	N=N+1
+descent	descent	yaw<-10	1	RIGHTPEDAL	sc_yaw=sc_yaw+1
+descent	descent	yaw>10	1	LEFTPEDAL	sc_yaw=sc_yaw+1
+descent	descent	rotor_rpm<lo_rpm	1	SLOWROTOR	N=N+1
+descent	descent	rotor_rpm>hi_rpm	1	FASTROTOR	N=N+1
+descent	descent	y_agl<500	1	FLAREHELP
+descent	flare	(y_agl*m2f<75)and(vh_ind_fpm>-1500)	100	FLARE
+descent	finish	(y_agl*m2f<150)and(vh_ind_fpm<-1500)	100	ABORT	restart();Yend=y_agl;Tend=T;sc_yaw=100;sc_airspeed=(100*sc_airspeed)/N;sc_rotor=(100*sc_rotor)/N;fpm=60*m2f*(Ystart-y_agl)/(Tend-Tstart)
+flare	hover	airspeed<10	1	ENABLE	restart();Yend=y_agl;Tend=T;sc_yaw=100;sc_airspeed=(100*sc_airspeed)/N;sc_rotor=(100*sc_rotor)/N;fpm=60*m2f*(Ystart-y_agl)/(Tend-Tstart)
+hover	finish	true	1	HOVER	hYaw=yaw;hRoll=roll;hPitch=pitch;sc_hover=score_hover()
+#flare 	 flare 	 ground 	 1 	 1 	 GROUND
+#hover 	 hover 	 ground 	 1 	 GROUND
+finish	scores	(sc_rotor>70)and(sc_airspeed>70)	1	EVAL_EXCELLENT
+finish	scores	(sc_rotor>50)and(sc_airspeed>50)	1	EVAL_EXCELLENT
+finish	scores	(sc_rotor<50)and(sc_airspeed>50)	1	EVAL_GOOD_AIRSPEED
+finish	scores	(sc_rotor>50)and(sc_airspeed<50)	1	EVAL_GOOD_ROTORSPEED
+finish	scores	(sc_rotor<50)and(sc_airspeed<50)	1	EVAL_POOR
+finish	scores	fpm>2000	1	EVAL_FASTDESCENT
+scores	start	true	1	SCORES

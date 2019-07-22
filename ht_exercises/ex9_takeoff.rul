@@ -1,0 +1,20 @@
+from	to	prob	condition	msgcode	command
+check	check	1	y_agl>5	LAND
+check	intro1	1	y_agl<5	HI
+#check 	 hover1 	 1 	 y_agl<5 	 HI
+intro1	intro2	1	true	INTRO1
+intro2	intro3	1	true	INTRO2
+intro3	hover1	1	true	INTRO3
+#hover1 	 turns 	 1 	 (y_agl>0.5)and(y_agl<7)and(groundspeed<4) 	 GOODHOVER 	 left=false; right=false; dir=heading
+hover1	turns	1	(y_agl>0.5)and(y_agl<7)and(groundspeed<4)and(math.abs(vh_ind_fpm)<7)	GOODHOVER	left=true; right=true; dir=heading
+hover1	hover1	1	y_agl>7	OUTOFHOVER1
+hover1	hover1	1	groundspeed>5	OUTOFHOVER2
+turns	turns	1	heading_in_range(heading,dir-120,dir-80)and(y_agl<7)	GOODLEFTTURN	left=true
+turns	turns	1	heading_in_range(heading,dir+80,dir+120)and(y_agl<7)	GOODRIGHTTURN	right=true
+turns	hover1	1	(y_agl>7)	OUTOFHOVER1
+turns	hover1	1	groundspeed>5	OUTOFHOVER2
+turns	takeoff	1	(left)and(right)and(heading>dir-15)and(heading<dir+15)	LETSGO
+takeoff	takeoff	1	(y_agl<7)and(airspeed<50)	GATHERAIRSPEED
+takeoff	takeoff	1	(y_agl<7)and(airspeed>10)and(airspeed<20)	TRANSLIFT
+takeoff	end	1	(airspeed>50)and(y_agl<7)	FASTENOUGH
+takeoff	takeoff	1	(y_agl>7)and(airspeed<50)	TOOHIGHSLOW

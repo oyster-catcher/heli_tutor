@@ -1,21 +1,65 @@
 require "package"
-print(package.path)
 if SCRIPT_DIRECTORY then
   package.path=package.path .. ";" .. SCRIPT_DIRECTORY .. "ht_exercises/?.lua"
 end
 
+lang="en"
+rads2rpm=2*3.14*60
+
 -- misc functions --
 
-function read_data_file(filename,sep)
-  local alldata = {}
-  local fields = nil
+-- read map file which contains 2 columns of key -> value
+-- and returns a table mapping key -> value
+function read_map(filename,sep)
+  local map = {}
+  print("heli_tutor: reading field mapping file '" .. filename .. "'")
   for line in io.lines(filename) do
     if #line > 0 and not line:startswith("#") then
+      -- detect separator as | or TAB on first non comment line
+      if not sep then
+        if string.find(line,"|") then
+          sep = "|"
+        elseif string.find(line,"\t") then
+          sep = "\t"
+        end
+      end
       data = line:split(sep)
+      if #data == 2 then
+          print("heli_tutor: mapping field name " .. data[1] .. " -> " .. data[2])
+          map[data[1]] = data[2]
+      end
+    end
+  end
+  return map
+end
+
+function read_data_file(filename,sep,fieldmap)
+  fieldmap = fieldmap or {}
+  local alldata = {}
+  local fields = nil
+  print("read_data_file: '" .. filename .. "' with sep=" .. (sep or "nil"))
+  for line in io.lines(filename) do
+    if #line > 0 and not line:startswith("#") then
+      -- detect separator as | or TAB on first non comment line
+      if not sep then
+        if string.find(line,"|") then
+          sep = "|"
+        elseif string.find(line,"\t") then
+          sep = "\t"
+        end
+      end
+      data = line:split(sep)
+      tdata = {} -- each fields is trimmed of leading+trailing spaces
+      for i,v in ipairs(data) do
+        table.insert(tdata,v:strip())
+      end
       if not fields then
-        fields = data
+        fields = {}
+        for _,field in ipairs(tdata) do
+          table.insert(fields,fieldmap[field] or field)
+        end
       else
-        table.insert(alldata,zip(fields,data))
+        table.insert(alldata,zip(fields,tdata))
       end
     end
   end
@@ -24,9 +68,14 @@ end
 
 function string:split(sep)
    local sep, fields = sep or ":", {}
-   local pattern = string.format("([^%s]+)", sep)
+   local pattern = string.format("([^%s]*)", sep)
+   --local pattern = string.format("([^%s]+)", sep)
    self:gsub(pattern, function(c) fields[#fields+1] = c end)
    return fields
+end
+
+function string:strip()
+    return self:match "^%s*(.-)%s*$"
 end
 
 function string:startswith(s)
@@ -73,13 +122,15 @@ function load_phrases()
 end
 
 function can_speak(T,msgcode,messages)
+  if not msgcode then
+    return true
+  end
   local phrase = messages[msgcode]
   if not phrase then
     print("ERROR! No such phrase " .. msgcode)
     return false
   end
   nt = next_time[msgcode] or 0
-  --print("comparing T=" .. T .. " with " ..  not_speaking_time .. " and " .. nt .. " for " .. msgcode)
   if (T < not_speaking_time) or (nt > T) then
     return false
   end
@@ -131,6 +182,9 @@ end
 local newRule = function(val)
   local obj = val or {}
   obj.prob = tonumber(val.prob) or 1  -- default to 1.0
+  if obj.msgcode == "" then
+    obj.msgcode = nil
+  end
   return setmetatable(obj, mtRule)
 end
 
@@ -158,7 +212,9 @@ local fire = function(self,T,messages)
   print("  fire: " .. inspect(self))
   if self.command then
     f = load(self.command)
-    --print("  command= " .. self.command .. " to=" .. self.to)
+    if not f then
+      print("ERROR! command '" .. self.command .. " cannot be executed")
+    end
     f()
   end
   if self.msgcode then
@@ -235,12 +291,32 @@ local function choose(probs)
   return nil
 end
 
+local function process_datarefs()
+  local m2f = 3.28 -- convert metres to feet
+  if rotor_radspersec then
+      rotor_rpm = rotor_radspersec*rads2rpm
+  end
+  if ELEVATION then
+      alt_ft = ELEVATION*m2f
+  end
+  if y_agl then
+      y_agl_ft = y_agl * m2f
+  end
+end
+
 -- evaludate rules and move to next state
 local step = function(self,T,messages)
+  process_datarefs()
   local active = {}
   local probs = {}
+  -- if this global function defined (in the exercise lua code)
+  if every then
+    every()
+  end
+
   -- find all rules with condition true
   for i,rule in ipairs(self.rules) do
+    istrue = rule:istrue(T,messages)
     if rule:istrue(T,messages) then
       table.insert(active, rule)
       table.insert(probs, rule.prob)
@@ -271,8 +347,8 @@ State = setmetatable({}, { __call = ctorState })
 
 local mtExercise = {}
 
-local newExercise = function(filename)
-  obj = {filename=filename,messages={},rules={},states={}}
+local newExercise = function()
+  obj = {messages={},rules={},states={}}
   return setmetatable(obj, mtExercise)
 end
 
@@ -280,74 +356,51 @@ local reset = function(self)
   self.current_state_name =  self.start_state_name
 end
 
-local load = function(self, filename)
+local load = function(self, fn_rules, fn_messages)
   self.start_state_name = nil
-  self.filename = filename
+  self.fn_rules = fn_rules
+  self.fn_messages = fn_messages
   self.states = {}
   self.messages = {}
   local section = nil
   local fields = nil
   local line,data,fields
-  for line in io.lines(filename) do
-    if #line > 0 and not line:startswith("#") then
-      data = line:split("\t")
-      if not fields and #data > 1 then
-        if data[1] == "msgcode" then
-          section = "messages"
-          fields = data
-        elseif data[1] == "from" then
-          section = "rules"
-          fields = data
-        else
-          print("WARNING! Expected first field after blank line to be msgcode(messages) or from(rules) but found '" .. line .. "'")
-        end
-      else
-        if section then
-          local d = zip(fields,data)
-          if section == "messages" then
-            msgcode = d.msgcode
-            d.msgcode = nil
-            self.messages[msgcode] = d
-          elseif section == "rules" then
-            if d.to == "" then
-              d.to = nil
-            end
-            froms = {}
-            -- * means all starts used so far (from and to)
-            if d.to == "*" then
-              d.to = nil
-            end
-            if d.from == "*" then
-              for name,state in pairs(self.states) do
-                table.insert(froms,name)
-              end
-            else
-              table.insert(froms,d.from)
-              if not self.states[d.from] then
-                self.states[d.from] = State()
-              end
-            end
 
-            if d.to and not self.states[d.to] then
-              self.states[d.to] = State()
-            end
-            local r = Rule(d)
-            for _,from in ipairs(froms) do
-              local state = self.states[from]
-              if not self.start_state_name then
-                self.start_state_name = from
-              end
-              state:addrule(r)
-            end
+  -- Read messages
+  for i,d in ipairs(read_data_file(fn_messages,nil)) do
+     if not d.msgcode or not d.message or not d.delay then
+       print("ERROR! Messages file " .. fn_messages .. " must contain the fields msgcode, delay, message separated by |")
+       return
+     end
+     msgcode = d.msgcode
+     d.msgcode = nil
+     self.messages[msgcode] = d
+  end
+
+  -- Read rules
+  -- create all State()'s first
+  for i,d in ipairs(read_data_file(fn_rules,nil)) do
+     if d.from and not self.states[d.from] then
+         self.states[d.from] = State()
+         if not self.start_state_name then
+             self.start_state_name = d.from
+         end
+     end
+     if d.to and not self.states[d.to] then
+         self.states[d.to] = State()
+     end
+  end
+
+  for i,d in ipairs(read_data_file(fn_rules,nil)) do
+      local r = Rule(d)
+      froms = {d.from}
+      for _,from in ipairs(froms) do
+          local state = self.states[from]
+          if not self.start_state_name then
+              self.start_state_name = from
           end
-        end
+          state:addrule(r)
       end
-    else
-      if #line == 0 then
-        fields = nil
-        section = nil
-      end
-    end
   end
   if not self.start_state_name then
     print("ERROR! No starting state")
@@ -356,11 +409,10 @@ local load = function(self, filename)
 end
 
 local tostringExercise = function(self)
-  local s = "Exercise(filename=" .. self.filename .. "\n"
+  local s = "Exercise(filename=" .. self.fn_rules .. "\n"
   local state,rule,name,j
   s = s .. "  messages:\n"
   for msgcode,msg in pairs(self.messages) do
-    --print(msgcode,inspect(msg))
     s = s .. "    " .. msgcode .. "=" .. inspect(msg) .. "\n"
   end
   s = s .. "  states:\n"
@@ -374,7 +426,7 @@ local tostringExercise = function(self)
 end
 
 local step = function(self,t)
-  print("  current=" .. self.current_state_name)
+  print("  T=" .. T .. " current=" .. self.current_state_name)
   local state = self.states[self.current_state_name]
   local next_state_name = state:step(t,self.messages)
   if next_state_name then
@@ -406,31 +458,46 @@ if #arg > 0 and (arg[1]=="-h" or arg[1]=="--help") then
   return
 end
 
+function load_exercise(exercisename)
+  local e=Exercise()
+  print("Loading exercise: " .. exercisename)
+  if SCRIPT_DIRECTORY then
+    fn_rules = SCRIPT_DIRECTORY .. "ht_exercises/" .. exercisename .. ".rul"
+    fn_messages = SCRIPT_DIRECTORY .. "ht_exercises/" .. exercisename .. ".msg"
+  else
+    fn_rules = exercisename .. ".rul"
+    fn_messages = exercisename .. ".msg"
+  end
+  e:load(fn_rules,fn_messages)
+  require(exercisename)
+  print(e)
+  return e
+end
+
+local e = Exercise()
+if arg and ((#arg~=0) and (#arg~=2)) then
+  print("usage: heli_tutor.lua <exercise name> <data file>")
+end
+
 if arg and #arg==2 then
-  fn_exercise = arg[1]
+  exercisename = arg[1]
   fn_samples = arg[2]
+  e=load_exercise(exercisename)
 else
   -- Add all exercises
   exercises = {}
   table.insert(exercises,"ex6_straight_and_level_flight")
   table.insert(exercises,"ex78_climbing_descending")
   table.insert(exercises,"ex9_takeoff")
+  table.insert(exercises,"ex10_basic_auto")
   fn_samples = nil
 end
 
-e = nil
-function load_exercise(exercisename)
-  print("Loading " .. exercisename)
-  fn_exercise = SCRIPT_DIRECTORY .. "ht_exercises/" .. exercisename .. ".txt"
-  local e = Exercise()
-  e:load(fn_exercise)
-  require(exercisename)
-  return e
-end
 
 if fn_samples then
   -- load samples
-  samples = read_data_file(fn_samples,"\t")
+  fieldmap = read_map("fieldmap.txt")
+  samples = read_data_file(fn_samples,nil,fieldmap)
 
   print("-------------------------")
   e:reset()
@@ -439,8 +506,7 @@ if fn_samples then
     for k,v in pairs(sample) do
       _G[k] = tonumber(v)
     end
-    print(inspect(sample))
-    print("T=" .. T .. " airspeed=" .. airspeed .. " ELEVATION=" .. ELEVATION)
+    --print("DATALOG:",inspect(sample))
     e:step(T)
   end
 end
@@ -451,15 +517,14 @@ if dataref then
   end
   if add_macro then
     add_macro("Heli Tutor: Exercise 6 - Straight and Level Flight", "e=load_exercise('ex6_straight_and_level_flight')" , "e=nil", "deactivate")
-    add_macro("Heli Tutor: Exercise 7&8 - Climbing and Descending", "e=load_exercise('ex78_climbing_descending')" , "e=nil", "deactivate")
+    add_macro("Heli Tutor: Exercise 7 & 8 - Climbing and Descending", "e=load_exercise('ex78_climbing_descending')" , "e=nil", "deactivate")
     add_macro("Heli Tutor: Exercise 9 - Take off", "e=load_exercise('ex9_takeoff')" , "e=nil", "deactivate")
+    add_macro("Heli Tutor: Exercise 10 - Basic Autorotation", "e=load_exercise('ex10_basic_auto')" , "e=nil", "deactivate")
+    add_macro("Heli Tutor: Exercise 11 - The Circuit (Square)", "e=load_exercise('ex11_heli_circuit')" , "e=nil", "deactivate")
   end
   if dataref then
-    dataref("true_psi","sim/flightmodel/position/true_psi")
-    dataref("mag_psi","sim/flightmodel/position/mag_psi")
-    dataref("y_agl", "sim/flightmodel/position/y_agl")
+    dataref("heading","sim/flightmodel/position/true_psi")
     dataref("airspeed", "sim/flightmodel/position/indicated_airspeed")
-    dataref("DELEVATION", "sim/flightmodel/position/vh_ind_fpm")
     dataref("groundspeed", "sim/flightmodel/position/groundspeed")
     dataref("roll", "sim/flightmodel/position/phi")
     dataref("roll_rate","sim/flightmodel/position/P")
@@ -467,6 +532,10 @@ if dataref then
     dataref("pitch_rate","sim/flightmodel/position/Q")
     dataref("yaw", "sim/flightmodel/position/beta") -- direction relative to flown path
     dataref("yaw_rate","sim/flightmodel/position/R")
+    dataref("rotor_radspersec","sim/flightmodel/engine/POINT_tacrad")
+    dataref("y_agl","sim/flightmodel/position/y_agl")
+    dataref("vh_ind_fpm","sim/flightmodel/position/vh_ind_fpm")
+    dataref("on_ground","sim/flightmodel/failures/onground_any")
     --
     do_often("if e then T=os.time(); e:step(os.time()) end")
   end

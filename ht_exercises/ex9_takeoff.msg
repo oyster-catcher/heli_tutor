@@ -14,24 +14,3 @@ OUTOFHOVER2	10	"You are drifting to much, try and stabilise the hover, ground sp
 TOOHIGHSLOW	5	Too high with insufficient airspeed
 GOODLEFTTURN	10	Take a good look left
 GOODRIGHTTURN	10	Take a good look right
-
-from	to	prob	condition	msgcode	command
-check	check	1	y_agl>5	LAND
-check	intro1	1	y_agl<5	HI
-#check	hover1	1	y_agl<5	HI
-intro1	intro2	1	true	INTRO1
-intro2	intro3	1	true	INTRO2
-intro3	hover1	1	true	INTRO3
-#hover1	turns	1	(y_agl>0.5)and(y_agl<7)and(groundspeed<4)	GOODHOVER	left=false; right=false; dir=mag_psi
-hover1	turns	1	(y_agl>0.5)and(y_agl<7)and(groundspeed<4)and(math.abs(DELEVATION)<20)	GOODHOVER	left=true; right=true; dir=mag_psi
-hover1	hover1	1	y_agl>7	OUTOFHOVER1
-hover1	hover1	1	groundspeed>5	OUTOFHOVER2
-turns	turns	1	heading_in_range(mag_psi,dir-120,dir-80)and(y_agl<7)	GOODLEFTTURN	left=true
-turns	turns	1	heading_in_range(mag_psi,dir+80,dir+120)and(y_agl<7)	GOODRIGHTTURN	right=true
-turns	hover1	1	(y_agl>7)	OUTOFHOVER1
-turns	hover1	1	groundspeed>5	OUTOFHOVER2
-turns	takeoff	1	(left)and(right)and(mag_psi>dir-15)and(mag_psi<dir+15)	LETSGO
-takeoff	takeoff	1	(y_agl<7)and(airspeed<50)	GATHERAIRSPEED
-takeoff	takeoff	1	(y_agl<7)and(airspeed>10)and(airspeed<20)	TRANSLIFT
-takeoff	takeoff	1	(airspeed>50)and(y_agl<7)	FASTENOUGH
-takeoff	takeoff	1	(y_agl>7)and(airspeed<50)	TOOHIGHSLOW
