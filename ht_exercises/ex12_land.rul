@@ -1,0 +1,4 @@
+# Evaluate landing
+from	to	condition	prob	msgcode	command
+start	land	on_ground==0	1	TAKEOFF
+land	land	on_ground~=0	1	LANDED	descent=vh_ind_fpm

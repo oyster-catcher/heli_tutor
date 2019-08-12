@@ -1,52 +1,92 @@
 # Exercise 11 - The Helicopter Circuit (Square)
 from	to	condition	prob	msgcode	command
-#start    	 start  	 on_ground~=0 	 1 	 LANDING 	 descent=vh_ind_fpm
-#start    	 start  	 on_ground==0 	 1 	 OFFGROUND
-start	setdir	true	1	WELCOME	last=500;N=0;leg1_psi=0;ln0=LONGITUDE;lt0=LATITUDE;L=true;R=true
-welcome	intro1	true	1	WELCOME
+#start	whover	true	1	WELCOME	last=500;N=0;L=false;R=false;wp=setup_waypoints(heading,1.1);leg1_hdg=dp(heading,-1);
+welcome	intro1	true	1	WELCOME	L=false;R=false;wp=setup_waypoints(heading,1.1);leg1_hdg=dp(heading,-1)
 intro1	intro2	true	1	INTRO1
+#intro1	final	true	1	INTRO1
 intro2	intro3	true	1	INTRO2
-intro3	wait	true	1	INTRO3	L=false;R=false;dir=heading;ln0=LONGITUDE;lt0=LATITUDE;last=500
-wait	setdir	y_agl_ft>1	1	LETSHOVER	N=0;leg1_psi=0
-setdir	setdir	true	0.1	CLOSE	last=heading
-setdir	setdir	math.abs(last-heading)<10	10	GOOD	leg1_psi=leg1_psi+heading;N=N+1;last=heading
-setdir	setdir	(N>5)	10	THISWAY	leg1_psi=leg1_psi/N
-setdir	hover	(N>5)and(y_agl_ft>1)	10	TOHOVER	leg1_psi=leg1_psi/N
-hover	hover	y_agl_ft>15	1	OOH_HI
-hover	hover	y_agl_ft<1	1	OOH_LO
+#intro3	intro4	true	1	INTRO3
+intro3	whover	true	1	INTRO3	L=false;R=false;dir=heading
+whover	hover	y_agl_ft>1	1	INAIR
+hover	hover	y_agl_ft>20	1	OOH_HI
+hover	hover	y_agl_ft<0.1	1	OOH_LO
+hover	hover	groundspeed<1	1	GOODHOVER	
 hover	hover	groundspeed>3	1	OOH_MOVING
-hover	hover	(y_agl_ft>1)and(y_agl_ft<15)and(neardir(leg1_psi-90,10,heading))	1	DONEL	L=true
-hover	hover	(y_agl_ft>1)and(y_agl_ft<15)and(neardir(leg1_psi+90,10,heading))	1	DONER	R=true
+hover	hover	(y_agl_ft>1)and(y_agl_ft<15)and(neardir(leg1_hdg-90,10,heading))	1	DONEL	L=true
+hover	hover	(y_agl_ft>1)and(y_agl_ft<15)and(neardir(leg1_hdg+90,10,heading))	1	DONER	R=true
 hover	leg1	L and R	1	LEG1
-# leg 1
-leg1	leg1	(airspeed<30)and(y_agl_ft>30)	1	AIRSPEED_LO
+hover	leg1	airspeed>10	1	GIVENUPHOVER	
+# leg 1 - upwind
+leg1	leg1	true	0.1	WPLEG1
+leg1	leg1	math.abs(turn(heading,wp_hdg(wp[1])))>5	1	WPLEG1	offtrack=true
+leg1	leg1	math.abs(turn(heading,wp_hdg(wp[1])))<5		BACKONTRACK	offtrack=false
+leg1	leg1	math.abs(turn(heading,wp_hdg(wp[1])))<5	not offtrack 	WPLEG1
 leg1	leg1	(airspeed>50)and(y_agl_ft<30)	1	CLIMBNOW
-leg1	leg1	(airspeed>80)	1	AIRSPEED_HI
-leg1	turn1	(y_agl_ft>500)	1	LEG1_TURN	ln1=LONGITUDE;lt1=LATITUDE;leg2_psi=leg1_psi-90;leg3_psi=leg1_psi-180;leg4_psi=leg1_psi-270
-turn1	leg2	neardir(leg1_psi-90,10,heading)	1	LEG2	leg_psi=leg2_psi
-# leg 2
-leg2	leg2	(y_agl_ft<900)	1	LEG2_LO
+leg1	leg1	(airspeed>80)	1	AIRSPEED_HI	offspeed=true
+leg1	leg1	(airspeed<60)and(y_agl_ft>30)	1	AIRSPEED_LO	offspeed=true
+leg1	leg1	(airspeed>60)and(airspeed<80)and(offspeed)	1	AIRSPEED_GOOD	offspeed=false
+leg1	leg1	(wp_dist(wp[1])<1.0)and(y_agl<(450-(wp_dist(wp[1])*500)))and(airspeed>50)	1	LEG1_LO
+leg1	leg2	(wp_dist(wp[1])<0.3)and(y_agl_ft<900)	1	LEG1_TURN_LOW
+leg1	leg2	(wp_dist(wp[1])<0.3)and(y_agl_ft>900)and(y_agl_ft<1100)	1	LEG1_TURN_GOOD
+leg1	leg2	(wp_dist(wp[1])<0.3)and(y_agl_ft>1100)	1	LEG1_TURN_HIGH
+# leg 2 - crosswind
+leg2	leg2	math.abs(turn(heading,wp_hdg(wp[2])))>5	1	WPLEG2	offtrack=true
+leg2	leg2	math.abs(turn(heading,wp_hdg(wp[2])))<5		BACKONTRACK	offtrack=false
+leg2	leg2	math.abs(turn(heading,wp_hdg(wp[2])))<5	not offtrack 	WPLEG2
+leg2	leg2	true	0.1	WPLEG2
+leg2	leg2	(wp_dist(wp[2])<1.0)and(y_agl_ft<(950-(wp_dist(wp[2])*500)))	1	LEG2_LO
+leg2	leg2	y_agl_ft>950	not reached	1	REACHED1000FT	reached=1
 leg2	leg2	(y_agl_ft>1100)	1	LEG2_HI
-leg2	leg2	(airspeed<60)	1	AIRSPEED_LO
-leg2	leg2	(airspeed>80)	1	AIRSPEED_HI
-leg2	leg2	not neardir(leg2_psi,10,heading)	KEEPHEADING
-leg2	turn2	(y_agl_ft>950)	1	LEG2_TURN
-turn2	leg3	neardir(leg2_psi-90,10,heading)	1	LEG3	leg_psi=leg3_psi
+leg2	leg2	(airspeed<60)	1	AIRSPEED_LO	offspeed=true
+leg2	leg2	(airspeed>80)	1	AIRSPEED_HI	offspeed=true
+leg2	leg2	(airspeed>60)and(airspeed<80)and(offspeed)	1	AIRSPEED_GOOD	offspeed=false
+leg2	leg3	(wp_dist(wp[2])<0.3)and(y_agl_ft<900)	1	LEG2_TURN_LOW
+leg2	leg3	(wp_dist(wp[2])<0.3)and(y_agl_ft>900)and(y_agl_ft<1100)	1	LEG2_TURN_GOOD
+leg2	leg3	(wp_dist(wp[2])<0.3)and(y_agl_ft>1100)	1	LEG2_TURN_HIGH
+# leg 3 - downwind
+leg3	leg3	math.abs(turn(heading,wp_hdg(wp[3])))>5	1	WPLEG3	offtrack=true
+leg3	leg3	math.abs(turn(heading,wp_hdg(wp[3])))<5		BACKONTRACK	offtrack=false
+leg3	leg3	math.abs(turn(heading,wp_hdg(wp[3])))<5	not offtrack 	WPLEG3
+leg3	leg3	true	0.1	WPLEG3
 leg3	leg3	(y_agl_ft<900)	1	LEG_LO
 leg3	leg3	(y_agl_ft>1100)	1	LEG_HI
-leg3	leg3	(airspeed<60)	1	AIRSPEED_LO
-leg3	leg3	(airspeed>80)	1	AIRSPEED_HI
-leg3	leg3	(-x>y)and(x<-0.3)	1	LEG3_TURN
-leg3	leg3	(x>0)and(x<0.1)	10	LOOKLEFT
-leg3	leg4	neardir(leg3_psi-90,10,heading)	1	LEG4
-leg4	leg4	(y_agl_ft>500)	1	TO500
-leg4	leg4	(y>-0.05)	1	LEG4_TURN
-leg4	leg5	neardir(leg4_psi-90,10,heading)	1	LEG5
-leg5	leg5	(x<-0.5)and(math.abs(airspeed-60)>5)	1	LEG5_KEEP60
-leg5	leg5	(x<-0.4)and(math.abs(airspeed-50)>5)	1	LEG5_KEEP50
-leg5	leg5	(x<-0.3)and(math.abs(airspeed-40)>5)	1	LEG5_KEEP40
-leg5	leg5	(x<-0.2)and(math.abs(airspeed-30)>5)	1	LEG5_KEEP30
-leg5	leg5	(math.abs(x)<0.02)and(math.abs(y)<0.02)	1	VERYCLOSE
-leg5	leg5	(y_agl_ft<10)and(groundspeed>1)	1	SLOWTOHOVER
-leg5	leg5	(on_ground~=0)and(vh_ind_fpm<-30)	1	GOODLANDING	descent=vh_ind_fpm
-leg5	leg5	(on_ground~=0)and(vh_ind_fpm>-30)	1	HEAVYLANDING	descent=vh_ind_fpm
+leg3	leg3	(airspeed<60)	1	AIRSPEED_LO	offspeed=true
+leg3	leg3	(airspeed>80)	1	AIRSPEED_HI	offspeed=true
+leg3	leg3	(airspeed>60)and(airspeed<80)and(offspeed)	1	AIRSPEED_GOOD	offspeed=false
+leg3	leg4	wp_dist(wp[3])<0.3	1	LEG3_TURN
+# leg4 - base
+leg4	leg4	math.abs(turn(heading,wp_hdg(wp[4])))>5	1	WPLEG4	offtrack=true
+leg4	leg4	math.abs(turn(heading,wp_hdg(wp[4])))<5		BACKONTRACK	offtrack=false
+leg4	leg4	math.abs(turn(heading,wp_hdg(wp[4])))<5	not offtrack 	WPLEG4
+leg4	leg4	true	0.1	WPLEG4
+leg4	leg4	(y_agl_ft>750)	1	TO750
+leg4	leg5	wp_dist(wp[4])<0.3	1	LEG4_TURN
+leg4	leg5	math.abs(turn(wp_hdg(wp[4]),leg1_hdg))<10	1	LEG4_TURN2
+# leg3 - final
+leg5	leg5	true	0.1	WPLEG5
+leg5	leg5	(wp_dist(wp[5])>0.9)and(math.abs(airspeed-60)>5)	1	LEG5_KEEP60
+leg5	leg5	glideslope(wp[5])>12	1	HIGH
+leg5	leg5	math.abs(glideslope(wp[5])-10)<2	1	GLIDESLOPE
+leg5	leg5	glideslope(wp[5])<8	1	LOW
+leg5	leg5	(wp_dist(wp[5])>0.7)and(wp_dist(wp[5])<0.9)and(math.abs(airspeed-50)>5)	1	LEG5_KEEP50
+leg5	leg5	(wp_dist(wp[5])>0.7)and(wp_dist(wp[5])<0.9)and(math.abs(airspeed-50)<5)	1	AIRSPEED_GOOD
+leg5	leg5	(wp_dist(wp[5])>0.5)and(wp_dist(wp[5])<0.7)and(math.abs(airspeed-40)>5)	1	LEG5_KEEP40
+leg5	leg5	(wp_dist(wp[5])>0.5)and(wp_dist(wp[5])<0.7)and(math.abs(airspeed-40)<5)	1	AIRSPEED_GOOD
+leg5	leg5	(wp_dist(wp[5])>0)and(wp_dist(wp[5])<0.5)and(math.abs(airspeed-30)>5)	1	LEG5_KEEP30
+leg5	leg5	(wp_dist(wp[5])>0.35)and(wp_dist(wp[5])<0.5)and(math.abs(airspeed-30)<5)	1	AIRSPEED_GOOD
+leg5	leg5	(wp_dist(wp[5])>0.2)and(wp_dist(wp[5])<0.35)and(math.abs(airspeed-20)>5)	1	LEG5_KEEP20
+leg5	leg5	(wp_dist(wp[5])>0.2)and(wp_dist(wp[5])<0.35)and(math.abs(airspeed-20)<5)	1	AIRSPEED_GOOD
+leg5	leg5	(wp_dist(wp[5])>0)and(wp_dist(wp[5])<0.2)and(airspeed<20)	1	LEG5_UNDER20
+leg5	leg5	true	0.1	DISTTOLAND
+leg5	leg5	(airspeed<40)and(vh_ind_fpm<-300)	1	FASTDESCENT
+leg5	final	wp_dist(wp[5])<0.1	1	VERYCLOSE
+# final approach to hover and landing - dont check glideslope, just land anywhere near
+final	final	(y_agl_ft<10)and(groundspeed>1)	1	SLOWTOHOVER
+final	final	airspeed<20	1	LEG5_UNDER20
+final	final	(y_agl_ft>1)and(y_agl_ft<30)	1	EYESOUT	descent=vh_ind_fpm; land_groundspeed=groundspeed
+final	end	(on_ground~=0)and(descent>-100)and(land_groundspeed<5)	1	GOODLANDING
+final	end	(on_ground~=0)and(descent<-100)and(land_groundspeed<5)	1	HEAVYLANDING
+final	end	(on_ground~=0)and(descent>-100)and(land_groundspeed>5)	1	MOVINGLANDING
+final	end	(on_ground~=0)and(descent<-100)and(land_groundspeed>5)	1	HEAVYMOVINGLANDING
+final	final	(airspeed<30)and(vh_ind_fpm<-300)	1	FASTDESCENT
+end	end2	true	1	ENDOFEXERCISE

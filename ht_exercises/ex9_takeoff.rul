@@ -1,20 +1,32 @@
 from	to	prob	condition	msgcode	command
-check	check	1	y_agl>5	LAND
-check	intro1	1	y_agl<5	HI
-#check 	 hover1 	 1 	 y_agl<5 	 HI
-intro1	intro2	1	true	INTRO1
+check	check	1	y_agl_ft>5	LAND	dir=heading
+check	intro1	1	y_agl_ft<5	HI	dir=heading
+#check 	 hover1 	 1 	 y_agl_ft<5 	 HI
+intro1	intro2	1	true	INTRO1	sc_hover=0; sc_takeoff=0; sc_turns=0; N=0; L=0; R=0; sumscore=0
 intro2	intro3	1	true	INTRO2
 intro3	hover1	1	true	INTRO3
-#hover1 	 turns 	 1 	 (y_agl>0.5)and(y_agl<7)and(groundspeed<4) 	 GOODHOVER 	 left=false; right=false; dir=heading
-hover1	turns	1	(y_agl>0.5)and(y_agl<7)and(groundspeed<4)and(math.abs(vh_ind_fpm)<7)	GOODHOVER	left=true; right=true; dir=heading
-hover1	hover1	1	y_agl>7	OUTOFHOVER1
+hover1 	 turns 	 1 	 (y_agl_ft>0.5)and(y_agl_ft<7)and(groundspeed<4) 	 GOODHOVER 	 sc_hover=sumscore/N; N=0; sumscore=0
+#hover1	turns	1	(y_agl_ft>0.5)and(y_agl_ft<7)and(groundspeed<4)and(math.abs(vh_ind_fpm)<7)	GOODHOVER
+hover1	hover1	1	true		sumscore=sumscore+0.5*(calc_score(6,y_agl_ft,4)+calc_score(0,4,groundspeed)); N=N+1
+hover1	hover1	1	y_agl_ft>7	OUTOFHOVER1
 hover1	hover1	1	groundspeed>5	OUTOFHOVER2
-turns	turns	1	heading_in_range(heading,dir-120,dir-80)and(y_agl<7)	GOODLEFTTURN	left=true
-turns	turns	1	heading_in_range(heading,dir+80,dir+120)and(y_agl<7)	GOODRIGHTTURN	right=true
-turns	hover1	1	(y_agl>7)	OUTOFHOVER1
+hover1	takeoff	1	groundspeed>10	MISSEDTURNS
+turns	turns	0.1	true	TURNHELP
+turns	turns	1	heading_in_range(heading,dir-120,dir-80)and(y_agl_ft<12)and(groundspeed<4)	GOODLEFTTURN	L=0.5*(calc_score(6,6,y_agl_ft)+calc_score(0,4,groundspeed))
+turns	turns	1	heading_in_range(heading,dir+80,dir+120)and(y_agl_ft<12)and(groundspeed<4)	GOODRIGHTTURN	R=0.5*(calc_score(6,6,y_agl_ft)+calc_score(0,4,groundspeed))
+turns	turns	1	heading_in_range(heading,dir-120,dir-80)and(y_agl_ft>12)and(groundspeed<4)	HIGHLEFTTURN
+turns	turns	1	heading_in_range(heading,dir+80,dir+120)and(y_agl_ft>12)and(groundspeed<4)	HIGHRIGHTTURN
+turns	turns	1	heading_in_range(heading,dir-120,dir-80)and(y_agl_ft<12)and(groundspeed>4)	MOVINGLEFTTURN
+turns	turns	1	heading_in_range(heading,dir+80,dir+120)and(y_agl_ft<12)and(groundspeed>4)	MOVINGHRIGHTTURN
+turns	turns	1	heading_in_range(heading,dir-120,dir-80)and(y_agl_ft>12)and(groundspeed>4)	HIGHANDMOVING
+turns	turns	1	heading_in_range(heading,dir+80,dir+120)and(y_agl_ft>12)and(groundspeed>4)	HIGHANDMOVING
+turns	hover1	1	(y_agl_ft>12)	OUTOFHOVER1
 turns	hover1	1	groundspeed>5	OUTOFHOVER2
-turns	takeoff	1	(left)and(right)and(heading>dir-15)and(heading<dir+15)	LETSGO
-takeoff	takeoff	1	(y_agl<7)and(airspeed<50)	GATHERAIRSPEED
-takeoff	takeoff	1	(y_agl<7)and(airspeed>10)and(airspeed<20)	TRANSLIFT
-takeoff	end	1	(airspeed>50)and(y_agl<7)	FASTENOUGH
-takeoff	takeoff	1	(y_agl>7)and(airspeed<50)	TOOHIGHSLOW
+turns	takeoff	1	(L~=0)and(R~=0)and(heading>dir-15)and(heading<dir+15)	LETSGO	sc_turns=0.5*(L+R); sumscore=0; N=0
+turns	takeoff	1	groundspeed>10	MISSEDTURNS	sc_turns=50*L+50*R; sumscore=0; N=0
+takeoff	takeoff	1	airspeed<50		sumscore=sumscore+calc_score(max_height_at_airspeed(airspeed)*0.5,airspeed*0.5,y_agl_ft); N=N+1
+takeoff	takeoff	1	(y_agl_ft<7)and(airspeed<50)	GATHERAIRSPEED
+takeoff	takeoff	1	(y_agl_ft<7)and(airspeed>10)and(airspeed<20)	TRANSLIFT
+takeoff	keep	1	(airspeed>50)	FASTENOUGH	sc_takeoff=sumscore/N
+takeoff	takeoff	1	y_agl_ft>max_height_at_airspeed(airspeed)	TOOHIGHSLOW
+keep	end	1	(y_agl_ft>500)and(airspeed>60)	END	score=0.33*sc_hover+0.33*sc_turns+0.33*sc_takeoff; save_score(score)

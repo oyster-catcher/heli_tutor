@@ -1,21 +1,38 @@
 from	to	prob	condition	msgcode	command
-init	intro	1	true	WELCOME	tgt_alt=1000; tgt_airspeed=60; tgt_yinc=500
+init	intro	1	true	WELCOME	tgt_elevation_ft=2000; tgt_airspeed=60; tgt_vh_ind_fpm=500; N=1; sumscore=0; M=0
 intro	alt	1	true	INTRO
-#alt 	 climb 	 1 	 (y_agl<5) 	 TAKEOFF
-#alt 	 end 	 1 	 (y_agl>5) 	 climb1
-alt	check	1	true	TAKEOFF
-check	check	1	(airspeed<50)	TOOSLOW
-check	climb1	1	(airspeed>50)	OKAY
-climb1	climb2	1	true	CLIMBINTRO1	t_leveloff=nil
-climb2	wait1	1	true	CLIMBINTRO2	t_start=t
-wait1	climb3	1	t>t_start+5
+alt 	 check 	 1 	 y_agl_ft<5 	 TAKEOFF
+alt	climb1	1	y_agl_ft>5	OKAY
+check	climb1	1	(airspeed>20)	OKAY
+climb1	climb2	1	true	CLIMBINTRO1	T_leveloff=nil
+climb2	wait1	1	true	CLIMBINTRO2	T_start=T
+wait1	climb3	1	T>T_start+5	CLIMBINTRO3	T_start=T
 # the actual climb
+climb3	climb3	0.1	true	TARGET
 climb3	climb3	1	(airspeed<tgt_airspeed-5)	TOOSLOW
 climb3	climb3	1	(airspeed>tgt_airspeed+5)	TOOFAST
-climb3	climb3	1	(yinc*m2f>tgt_yinc*1.1)	RATEHI
-climb3	climb3	1	(yinc*m2f<tgt_yinc*0.9)and(ALTITUDE*m2f<tgt_alt-100)	RATELO
-climb3	climb3	1	math.abs(ALTITUDE*m2f+yinc*m2f*0.1-tgt_alt)<10	LEVELOFF	t_leveloff=t
-climb3	climb3	0.01	math.abs(tgt_airspeed-airspeed)<5 and math.abs(tgt_yinc-yinc)<yinc*0.1	CLIMBGOOD
-climb3	level1	1	(ALTITUDE*m2f>tgt_alt-50)and(ALTITUDE*m2f<tgt_alt+50)	TOC	tgt_airspeed=80
-level1	level1	1	t_leveloff and math.abs(yinc)<50 and math.abs(tgt_airspeed-airspeed)<5 and math.abs(ALTITUDE*m2f-tgt_alt)<50	GOODLEVELTIME
-level1	level1	1	(t_leveloff==nil) and math.abs(yinc)<50 and math.abs(tgt_airspeed-airspeed)<5 and math.abs(ALTITUDE*m2f-tgt_alt)<50	GOODLEVEL
+climb3	climb3	1	(vh_ind_fpm>tgt_vh_ind_fpm+150)	CLIMBHI
+climb3	climb3	1	(vh_ind_fpm<tgt_vh_ind_fpm-150)and(elevation_ft<tgt_elevation_ft-100)	CLIMBLO
+climb3	climb3	1	math.abs(tgt_airspeed-airspeed)<5 and math.abs(tgt_vh_ind_fpm-vh_ind_fpm)<vh_ind_fpm*0.1	CLIMBGOOD
+climb3	climb3	1	true		sumscore=sumscore+calc_score(500,250,vh_ind_fpm)+calc_score(tgt_airspeed,10,airspeed); M=M+1; score=sumscore/M
+climb3	level1	1	math.abs(tgt_elevation_ft-elevation_ft)<200	LEVELOFF	T_leveloff=T; tgt_airspeed=80
+climb3	level1	1	elevation_ft>tgt_elevation_ft+200	TOOHIGH	T_leveloff=T; tgt_airspeed=80
+level1	level1	1	(elevation_ft>tgt_elevation_ft-50)and(elevation_ft<tgt_elevation_ft+50)	TOC
+level1	level1	1	math.abs(vh_ind_fpm)>100 or math.abs(tgt_airspeed-airspeed)>5 or math.abs(elevation_ft-tgt_elevation_ft)>50	LOOKINGFOR
+level1	level2	1	math.abs(vh_ind_fpm)<100 and math.abs(tgt_airspeed-airspeed)<5 and math.abs(elevation_ft-tgt_elevation_ft)<50	GOODLEVELTIME
+level2	descent3	1	true	NEWDESCENT	tgt_elevation_ft=math.random(10,15)*100; tgt_airspeed=math.random(5,8)*10; tgt_vh_ind_fpm=500	N=N+1
+# a descent
+descent3	descent3	0.1	true	TARGET
+descent3	descent3	1	(airspeed<tgt_airspeed-5)	TOOSLOW
+descent3	descent3	1	(airspeed>tgt_airspeed+5)	TOOFAST
+descent3	descent3	1	(-vh_ind_fpm>tgt_vh_ind_fpm+150)	DESCENTHI
+descent3	descent3	1	(-vh_ind_fpm<tgt_vh_ind_fpm-150)and(elevation_ft<tgt_elevation_ft-100)	DESCENTLO
+descent3	descent3	1	math.abs(tgt_airspeed-airspeed)<5 and math.abs(tgt_vh_ind_fpm-vh_ind_fpm)<vh_ind_fpm*0.1	DESCENTGOOD
+descent3	descent3	1	true		sumscore=sumscore+calc_score(500,250,vh_ind_fpm)+calc_score(tgt_airspeed,10,airspeed); M=M+1; score=sumscore/M
+descent3	level3	1	math.abs(tgt_elevation_ft-elevation_ft)<200	LEVELOFF	T_leveloff=T; tgt_airspeed=80
+level3	level3	1	(elevation_ft>tgt_elevation_ft-50)and(elevation_ft<tgt_elevation_ft+50)	REACHED
+level3	level3	1	math.abs(vh_ind_fpm)>100 or math.abs(tgt_airspeed-airspeed)>5 or math.abs(elevation_ft-tgt_elevation_ft)>50	LOOKINGFOR
+level3	level4	1	math.abs(vh_ind_fpm)<100 and math.abs(tgt_airspeed-airspeed)<5 and math.abs(elevation_ft-tgt_elevation_ft)<50	GOODLEVELTIME
+level4	climb3	1	N<2	NEWCLIMB	tgt_elevation_ft=math.random(20,25)*100; tgt_airspeed=math.random(5,7)*10	N=N+1
+level4	end	1	N>=2	END	save_score(score)
+# end of exercise

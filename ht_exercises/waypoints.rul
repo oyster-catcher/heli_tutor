@@ -1,0 +1,10 @@
+from	to	condition	msgcode	command
+start	wp1	true	SETTING	wp=setup_waypoints(heading)
+wp1	wp1	wp_dist(wp[1])>0.2	WAYPOINT1
+wp1	wp2	wp_dist(wp[1])<0.3	REACHED1
+wp2	wp2	wp_dist(wp[2])>0.2	WAYPOINT2
+wp2	wp3	wp_dist(wp[2])<0.3	REACHED2
+wp3	wp3	wp_dist(wp[3])>0.2	WAYPOINT3
+wp3	wp4	wp_dist(wp[3])<0.3	REACHED3
+wp4	wp4	wp_dist(wp[4])>0.2	WAYPOINT4
+wp4	finish	wp_dist(wp[4])<0.3	REACHED4

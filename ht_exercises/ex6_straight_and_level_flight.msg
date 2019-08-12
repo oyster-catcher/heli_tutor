@@ -26,7 +26,7 @@ TIP4	300	When you level off after a climb set the attitude, lower power, or coll
 TIP5	300	When climbing and descending we can use the mnenomic P.A.T., standing for power, attitude, trim. So the climb we raise power, or collective in a helicopter, set the attitude and then trim.
 TIP6	300	When descending more than 300 feet per minute keep your airspeed over 50 knots otherwise you might be in danger of vortex ring state. This is when the helicopter descends through its own downdraft which leads to instability and a descent thats difficult to arrest
 TIP7	300	You are flying the Cabri G2, its the helicopter I find the most fun to fly
-FINISHED	30	"Well done. You scored " .. math.floor(sc_airspeed) .. "% for airspeed and " .. math.floor(sc_alt) .. "% for altitude"
+FINISHED	30	"Well done. You scored " .. math.floor(sc_airspeed) .. "% for airspeed and " .. math.floor(sc_alt) .. "% for altitude. A combined score of " .. math.floor(sc) .. "%"
 SCORINGGOOD	10	Good. Keep it going
 SCORINGBAD	10	"Keep going. Remember " .. tgt_airspeed .. " knots and " .. tgt_alt .. " feet"
 DIFFERENTAIRSPEED	1	"Okay now we're going to try to do this at " .. tgt_airspeed .. " knots. Adjust to the new airspeed and I'll score you again"
