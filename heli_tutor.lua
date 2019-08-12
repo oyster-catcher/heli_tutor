@@ -5,6 +5,7 @@ end
 
 lang="en"
 rads2rpm=2*3.14*60
+ht=false
 
 -- misc functions --
 
@@ -12,7 +13,7 @@ rads2rpm=2*3.14*60
 -- and returns a table mapping key -> value
 function read_map(filename,sep)
   local map = {}
-  print("heli_tutor: reading field mapping file '" .. filename .. "'")
+  print("INFO: reading field mapping file '" .. filename .. "'")
   for line in io.lines(filename) do
     if #line > 0 and not line:startswith("#") then
       -- detect separator as | or TAB on first non comment line
@@ -23,9 +24,9 @@ function read_map(filename,sep)
           sep = "\t"
         end
       end
-      data = line:split(sep)
+      data = split(line,sep)
       if #data == 2 then
-          print("heli_tutor: mapping field name " .. data[1] .. " -> " .. data[2])
+          print("INFO: mapping field name " .. data[1] .. " -> " .. data[2])
           map[data[1]] = data[2]
       end
     end
@@ -37,7 +38,7 @@ function read_data_file(filename,sep,fieldmap)
   fieldmap = fieldmap or {}
   local alldata = {}
   local fields = nil
-  print("read_data_file: '" .. filename .. "' with sep=" .. (sep or "nil"))
+  print("INFO: read_data_file " .. filename .. " with " .. (sep or "nil"))
   for line in io.lines(filename) do
     if #line > 0 and not line:startswith("#") then
       -- detect separator as | or TAB on first non comment line
@@ -48,7 +49,8 @@ function read_data_file(filename,sep,fieldmap)
           sep = "\t"
         end
       end
-      data = line:split(sep)
+      data = split(line,sep)
+      --print("INFO:" .. inspect(data))
       tdata = {} -- each fields is trimmed of leading+trailing spaces
       for i,v in ipairs(data) do
         table.insert(tdata,v:strip())
@@ -66,12 +68,110 @@ function read_data_file(filename,sep,fieldmap)
   return alldata
 end
 
-function string:split(sep)
-   local sep, fields = sep or ":", {}
-   local pattern = string.format("([^%s]*)", sep)
-   --local pattern = string.format("([^%s]+)", sep)
-   self:gsub(pattern, function(c) fields[#fields+1] = c end)
-   return fields
+function join(list, delimiter)
+   local len = getn(list)
+   if len == 0 then
+      return "" 
+   end
+   local string = list[1]
+   for i = 2, len do 
+      string = string .. delimiter .. list[i] 
+   end
+   return string
+end
+
+function write_data_file(data,filename,sep)
+  print("write_data_file: " .. filename)
+  local fields = {}
+  for i,d in ipairs(data) do
+    if not fields then
+      fields = {}
+      for k,v in pairs(d) do
+        table.insert(fields,k)
+      end
+      s = join(fields,"\t")
+      print(s)
+    end
+  end
+end
+
+-- reading and writing scores for exercises
+
+function read_scores(filename)
+  print("read_scores: " .. filename)
+  data = read_data_file(filename,"\t")
+  local scores = {}
+  for i,d in ipairs(data) do
+    scores[d.exercise] = d.score
+  end
+  return scores
+end
+
+function spairs(t, order)
+    -- collect the keys
+    local keys = {}
+    for k in pairs(t) do keys[#keys+1] = k end
+
+    -- if order function given, sort by it by passing the table and keys a, b,
+    -- otherwise just sort the keys
+    if order then
+        table.sort(keys, function(a,b) return order(t, a, b) end)
+    else
+        table.sort(keys)
+    end
+
+    -- return the iterator function
+    local i = 0
+    return function()
+        i = i + 1
+        if keys[i] then
+            return keys[i], t[keys[i]]
+        end
+    end
+end
+
+function write_scores(scores,filename)
+  print("write_scores: " .. filename)
+  f = io.open(filename,"w")
+  io.output(f)
+  io.write("exercise\tscore\n")
+  for exercise,score in spairs(scores) do
+    print(exercise .. "=" .. score)
+    io.write(exercise .. "\t" .. math.floor(score) .. "\n")
+  end
+  io.close(f)
+end
+
+function save_score(score)
+  if ex_index then
+    exercises[ex_index].score = score
+    if SCRIPT_DIRECTORY then
+      write_data_file(exercises,SCRIPT_DIRECTORY .. "ht_exercises/exercises.txt","\t")
+    else
+      write_data_file(exercises,"ht_exercises/exercises.txt","\t")
+    end
+  else
+    print("Don't know which row in exercises.txt to use. Would have set score to " .. score)
+  end
+end
+
+function split(str, pat)
+   local t = {}  -- NOTE: use {n = 0} in Lua-5.0
+   local fpat = "(.-)" .. pat
+   local last_end = 1
+   local s, e, cap = str:find(fpat, 1)
+   while s do
+      if s ~= 1 or cap ~= "" then
+         table.insert(t,cap)
+      end
+      last_end = e+1
+      s, e, cap = str:find(fpat, last_end)
+   end
+   if last_end <= #str then
+      cap = str:sub(last_end)
+      table.insert(t, cap)
+   end
+   return t
 end
 
 function string:strip()
@@ -90,6 +190,22 @@ function inspect(o)
   return s .. "}"
 end
 
+function asjson(o)
+  local s="{",k,v
+  local first = true
+  for k,v in pairs(o) do
+    if not first then
+      s = s .. ","
+    end
+    if k ~= "" then
+      s = s .. '"' .. k .. '":' .. tostring(v)
+    end
+    first = false
+  end
+  return s .. "}"
+end
+
+
 function zip(a,b)
   o = {}
   for i,a in ipairs(a) do
@@ -99,16 +215,70 @@ function zip(a,b)
 end
 
 function heading_in_range(heading,lo,hi)
+  local h = heading
   if lo<0 and hi<0 then
-    heading = heading - 360
+    h = h - 360
   end
   if lo>360 and hi>360 then
-    heading = heading + 360
+    h = h + 360
   end
-  if lo<360 and hi>360 and heading<180 then
-    heading = heading + 360
+  if lo<360 and hi>360 and h<180 then
+    h = h + 360
   end
-  return heading>lo and heading<hi
+  return h>lo and h<hi
+end
+
+-- draw functions --
+
+function draw_exercises(exercises)
+    -- view from top with box around hover box (draw helipad)
+    cx,cy = 10,400
+    width = 300
+    colwidth = 250
+    rowheight = 20
+    bordx,bordy = 5,15
+    height = rowheight * (1+#exercises) + bordy
+    graphics.set_color(0, 0, 0, 0.5)
+    graphics.draw_rectangle(cx, cy, cx+width, cy+height)
+    graphics.set_color(1, 1, 1, 1)
+    -- setup scores
+    i=0
+    color="grey"
+    graphics.draw_string(cx+bordx, cy+height-bordy-i*rowheight, "Exercise", color)
+    graphics.draw_string(cx+bordx+colwidth, cy+height-bordy-i*rowheight, "Score", color)
+    for i,d in ipairs(exercises) do
+      score = tonumber(d.score)
+      if score>50 then
+        graphics.set_color(0, 0.8, 0, 1)
+        color = "green"
+      else
+        graphics.set_color(1, 0, 0, 1)
+        color = "red"
+      end
+      if ex_index==i then
+        color = "white"
+      end
+      graphics.draw_string(cx+bordx, cy+height-bordy-i*rowheight, d.exercise, color)
+      graphics.draw_string(cx+bordx+colwidth, cy+height-bordy-i*rowheight, math.floor(score) .. "%", color)
+      i=i+1
+    end
+end
+
+function on_mouse_click()
+    cx,cy = 10,400
+    width = 300
+    colwidth = 250
+    rowheight = 20
+    bordx,bordy = 5,15
+    if MOUSE_X < cx or MOUSE_X > cx+width or MOUSE_Y < cy or MOUSE_Y > cy+height then
+        return
+    end
+    row = math.floor(0.5+(cy+height-bordy-MOUSE_Y)/rowheight)
+    if row>0 then
+        e = load_exercise(exercises[row].filename)
+        ex_index = row
+        RESUME_MOUSE_CLICK = true
+    end
 end
 
 -- speak functions --
@@ -116,10 +286,6 @@ end
 local speakrate = 0.08 -- 0.01 secs/character
 local next_time = {}
 local not_speaking_time = -1000
-
-function load_phrases()
-  phrases["HOVER"] = {msg="Come to a nice hover", delay=5}
-end
 
 function can_speak(T,msgcode,messages)
   if not msgcode then
@@ -138,12 +304,17 @@ function can_speak(T,msgcode,messages)
 end
 
 function speak(t,msgcode,messages)
-  phrase = messages[msgcode].message
-  if not phrase then
+  -- pick randomly
+  msgs = messages[msgcode]
+
+  --phrase = messages[msgcode].message
+  if not msgs then
     phrase = msgcode
     delay = 0
   else
-    delay = messages[msgcode].delay
+    d = msgs[math.random(#msgs)]
+    phrase = d.message
+    delay = d.delay
   end
   if string.find(phrase, '"') then -- code to execure
     fphrase = load("return " .. phrase)
@@ -152,7 +323,7 @@ function speak(t,msgcode,messages)
     end
     phrase = fphrase()
   end
-  print("  speaking '" .. phrase .. "'")
+  print("SPEAK: " .. phrase .. "'")
   if XPLMSpeakString then
     XPLMSpeakString(phrase)
   end
@@ -209,7 +380,7 @@ local istrue = function(self,t,messages)
 end
 
 local fire = function(self,T,messages)
-  print("  fire: " .. inspect(self))
+  print("FIRE: " .. inspect(self))
   if self.command then
     f = load(self.command)
     if not f then
@@ -297,7 +468,7 @@ local function process_datarefs()
       rotor_rpm = rotor_radspersec*rads2rpm
   end
   if ELEVATION then
-      alt_ft = ELEVATION*m2f
+      elevation_ft = ELEVATION*m2f
   end
   if y_agl then
       y_agl_ft = y_agl * m2f
@@ -317,6 +488,7 @@ local step = function(self,T,messages)
   -- find all rules with condition true
   for i,rule in ipairs(self.rules) do
     istrue = rule:istrue(T,messages)
+    --print(istrue,rule)
     if rule:istrue(T,messages) then
       table.insert(active, rule)
       table.insert(probs, rule.prob)
@@ -374,7 +546,11 @@ local load = function(self, fn_rules, fn_messages)
      end
      msgcode = d.msgcode
      d.msgcode = nil
-     self.messages[msgcode] = d
+     -- each msgcode is a table so we can have multiple messages for the same code
+     if not self.messages[msgcode] then
+       self.messages[msgcode] = {}
+     end
+     table.insert(self.messages[msgcode],d)
   end
 
   -- Read rules
@@ -412,8 +588,10 @@ local tostringExercise = function(self)
   local s = "Exercise(filename=" .. self.fn_rules .. "\n"
   local state,rule,name,j
   s = s .. "  messages:\n"
-  for msgcode,msg in pairs(self.messages) do
-    s = s .. "    " .. msgcode .. "=" .. inspect(msg) .. "\n"
+  for msgcode,msgs in pairs(self.messages) do
+    for _,d in ipairs(msgs) do
+      s = s .. "    " .. msgcode .. "=" .. inspect(d) .. "\n"
+    end
   end
   s = s .. "  states:\n"
   for name,state in pairs(self.states) do
@@ -426,8 +604,9 @@ local tostringExercise = function(self)
 end
 
 local step = function(self,t)
-  print("  T=" .. T .. " current=" .. self.current_state_name)
+  print("STATE: " .. self.current_state_name)
   local state = self.states[self.current_state_name]
+  --print(tostring(state))
   local next_state_name = state:step(t,self.messages)
   if next_state_name then
     self.current_state_name = next_state_name
@@ -460,7 +639,7 @@ end
 
 function load_exercise(exercisename)
   local e=Exercise()
-  print("Loading exercise: " .. exercisename)
+  print("INFO: Loading exercise " .. exercisename)
   if SCRIPT_DIRECTORY then
     fn_rules = SCRIPT_DIRECTORY .. "ht_exercises/" .. exercisename .. ".rul"
     fn_messages = SCRIPT_DIRECTORY .. "ht_exercises/" .. exercisename .. ".msg"
@@ -470,7 +649,7 @@ function load_exercise(exercisename)
   end
   e:load(fn_rules,fn_messages)
   require(exercisename)
-  print(e)
+  --print(e)
   return e
 end
 
@@ -484,13 +663,13 @@ if arg and #arg==2 then
   fn_samples = arg[2]
   e=load_exercise(exercisename)
 else
-  -- Add all exercises
-  exercises = {}
-  table.insert(exercises,"ex6_straight_and_level_flight")
-  table.insert(exercises,"ex78_climbing_descending")
-  table.insert(exercises,"ex9_takeoff")
-  table.insert(exercises,"ex10_basic_auto")
   fn_samples = nil
+end
+
+if SCRIPT_DIRECTORY then
+    exercises = read_data_file(SCRIPT_DIRECTORY .. "ht_exercises/exercises.txt","\t")
+else
+    exercises = read_data_file("ht_exercises/exercises.txt","\t")
 end
 
 
@@ -499,31 +678,34 @@ if fn_samples then
   fieldmap = read_map("fieldmap.txt")
   samples = read_data_file(fn_samples,nil,fieldmap)
 
-  print("-------------------------")
   e:reset()
   last_T=0
   for i,sample in ipairs(samples) do
     for k,v in pairs(sample) do
       _G[k] = tonumber(v)
     end
-    --print("DATALOG:",inspect(sample))
+    print("DATA: " .. asjson(sample))
     e:step(T)
   end
 end
+
+if do_every_draw then
+    do_every_draw("if ht then draw_exercises(exercises) end")
+end
+if do_on_mouse_click then
+    do_on_mouse_click("if ht on_mouse_click()")
+end
+
 if dataref then
   -- running as X-Plane plugin
   if not add_macro then
     print("usage: helitutor.lua [ <exercise.txt> <samples.txt> ] - no args for running as XPlane plugin")
   end
   if add_macro then
-    add_macro("Heli Tutor: Exercise 6 - Straight and Level Flight", "e=load_exercise('ex6_straight_and_level_flight')" , "e=nil", "deactivate")
-    add_macro("Heli Tutor: Exercise 7 & 8 - Climbing and Descending", "e=load_exercise('ex78_climbing_descending')" , "e=nil", "deactivate")
-    add_macro("Heli Tutor: Exercise 9 - Take off", "e=load_exercise('ex9_takeoff')" , "e=nil", "deactivate")
-    add_macro("Heli Tutor: Exercise 10 - Basic Autorotation", "e=load_exercise('ex10_basic_auto')" , "e=nil", "deactivate")
-    add_macro("Heli Tutor: Exercise 11 - The Circuit (Square)", "e=load_exercise('ex11_heli_circuit')" , "e=nil", "deactivate")
+    add_macro("Heli Tutor", "ht=true" , "ht=false", "deactivate")
   end
   if dataref then
-    dataref("heading","sim/flightmodel/position/true_psi")
+    dataref("heading","sim/flightmodel/position/mag_psi")
     dataref("airspeed", "sim/flightmodel/position/indicated_airspeed")
     dataref("groundspeed", "sim/flightmodel/position/groundspeed")
     dataref("roll", "sim/flightmodel/position/phi")
