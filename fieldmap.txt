@@ -1,0 +1,13 @@
+_totl,_time	T
+__lat,__deg	LATITUDE
+__lon,__deg	LONGITUDE
+__alt,ftagl	y_agl_ft
+__alt,ftmsl	elevation_ft
+_Vind,_kias	airspeed
+Vtrue,_ktgs	groundspeed
+rpm_1,_prop	rotor_rpm
+hding,_true	heading
+__VVI,__fpm	vh_ind_fpm
+_alpha,__deg	AOA
+_beta,__deg	yaw
+___on,runwy	on_runway
