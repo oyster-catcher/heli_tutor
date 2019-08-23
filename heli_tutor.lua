@@ -183,11 +183,11 @@ function string:startswith(s)
 end
 
 function inspect(o)
-  local s="{",k,v
+  local s="",k,v
   for k,v in pairs(o) do
-    s = s .. k .. "=" .. tostring(v) .. ", "
+    s = s .. k .. "=" .. tostring(v) .. " "
   end
-  return s .. "}"
+  return s .. ""
 end
 
 function asjson(o)
@@ -306,8 +306,6 @@ end
 function speak(t,msgcode,messages)
   -- pick randomly
   msgs = messages[msgcode]
-
-  --phrase = messages[msgcode].message
   if not msgs then
     phrase = msgcode
     delay = 0
@@ -323,7 +321,7 @@ function speak(t,msgcode,messages)
     end
     phrase = fphrase()
   end
-  print("SPEAK: " .. phrase .. "'")
+  print("SPEAK: message=\"" .. phrase .. "\"")
   if XPLMSpeakString then
     XPLMSpeakString(phrase)
   end
@@ -604,7 +602,7 @@ local tostringExercise = function(self)
 end
 
 local step = function(self,t)
-  print("STATE: " .. self.current_state_name)
+  print("STEP: " .. "state=" .. self.current_state_name .. " T=" .. T)
   local state = self.states[self.current_state_name]
   --print(tostring(state))
   local next_state_name = state:step(t,self.messages)
@@ -684,7 +682,7 @@ if fn_samples then
     for k,v in pairs(sample) do
       _G[k] = tonumber(v)
     end
-    print("DATA: " .. asjson(sample))
+    print("DATA: " .. inspect(sample))
     e:step(T)
   end
 end
