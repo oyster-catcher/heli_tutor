@@ -1,0 +1,7 @@
+exercise	filename	score
+6 - Straight and Level Flight	ex6_straight_and_level_flight	0
+7&8 - Climbing and Descending	ex78_climbing_descending	0
+9 - Take off	ex9_takeoff	0
+10 - Basic Autorotation	ex10_basic_auto	0
+11 - The Helicopter Circuit (Square)	ex11a_heli_circuit	0
+setscore	setscore	0
