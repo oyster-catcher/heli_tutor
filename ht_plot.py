@@ -82,26 +82,26 @@ def segment(events):
   segments=[]
   for d in events:
     if excludekey(last,['T'])==excludekey(d,['T']):
-      pass
+      Tall.append(d['T'])
+      Tend=d['T']
     else:
       if last:
-        print("NEXT")
+        del last['T']
         last['Tstart']=Tstart
         last['Tend']=d['T']
-        del last['T']
+        last['Tall']=Tall
         segments.append(last)
       Tstart=d['T']
+      Tend=d['T']
+      Tall=[d['T']]
     last=d
   if last:
-    last['Tstart']=Tstart
-    last['Tend']=last['T']
     del last['T']
+    last['Tstart']=Tstart
+    last['Tend']=Tend
+    last['Tall']=Tall
     segments.append(last)
   return segments
-
-#data=[{'A':1,'T':1.0},{'A':1,'T':2.0}]
-#print(segment(data))
-#sys.exit(1)
 
 def read_log(f,fieldmap={}):
   colnames=list(mcolors.CSS4_COLORS.keys())
@@ -163,7 +163,7 @@ def read_data(f, fieldmap):
 
 def get_yvalue(x,curve):
   for i in range(0,len(curve)-1):
-    if x>curve[i][0] and x<curve[i+1][0]:
+    if x>=curve[i][0] and x<curve[i+1][0]:
       d=(x-curve[i][0])/(curve[i+1][0]-curve[i][0])
       return curve[i][1]*(1-d) + curve[i+1][1]*d
   return None
@@ -175,7 +175,6 @@ def get_segment(t,segments):
   return None
 
 def plot_line(ax,data,fx,fy,color='black'):
-  #print(fx,fy)
   xx=[float(d[fx]) for d in data]
   yy=[float(d[fy]) for d in data]
   ax.plot(xx,yy,color=color)
@@ -188,6 +187,29 @@ def read_fieldmap(f):
     x,y = line.split("\t")
     fieldmap[x] = y
   return fieldmap
+
+def position_text(ax,textstr,Tall,curve,o):
+  xmin,xmax = ax.get_xlim()
+  ymin,ymax = ax.get_ylim()
+  Tstart,Tend = Tall[0],Tall[-1]
+  if o.portrait:
+    ax.text((xmin+xmax)*0.5, Tstart, strlim(textstr,o.labellim), ha='center', fontsize=7, rotation_mode='anchor', rotation=0, bbox=dict(facecolor='white', alpha=0.6))
+    x=xmin+0.05*(xmax-xmin)*random.random()
+    l=matplotlib.lines.Line2D([x,(xmin+xmax)*0.5],[(Tstart+Tend)*0.5,Tstart])
+    ax.add_line(l)
+    for t in Tall:
+      l=matplotlib.lines.Line2D([x,(xmin+xmax)*0.5],[t,(Tstart+Tend)*0.5])
+      ax.add_line(l)
+  else:
+    ymid=get_yvalue(0.5*(Tstart+Tend),curve)
+    if ymax-ymid < ymid-ymin: # closer to top
+      ymid = ymin
+    ymid = ymid+(ymax-ymin)*0.1
+    ax.text(0.5*(Tstart+Tend), ymid, strlim(textstr,o.labellim), fontsize=7, rotation_mode='anchor', rotation=45, bbox=dict(facecolor='white', alpha=0.6))
+    for t in Tall:
+      y=get_yvalue(t,curve)
+      l=matplotlib.lines.Line2D([t,0.5*(Tstart+Tend)],[y,ymid])
+      ax.add_line(l)
 
 def plot(ax,data,states,xname,yname,label=None):
   colnames=list(mcolors.CSS4_COLORS.keys())
@@ -218,7 +240,7 @@ def plot(ax,data,states,xname,yname,label=None):
     if o.portrait:
       ax.text((xmin+xmax)*0.5, (Tstart+Tend)*0.5, state, fontsize=10, ha='left', rotation_mode='anchor')
     else:
-      ax.text(Tstart, y, state, fontsize=10, ha='left', rotation_mode='anchor')
+      ax.text((Tstart+Tend)*0.5, y, state, fontsize=10, ha='center', rotation_mode='anchor')
     if o.portrait:
       ax.axhspan(ymin=Tstart,ymax=Tend,facecolor=col,alpha=0.3)
     else:
@@ -241,33 +263,20 @@ def plot(ax,data,states,xname,yname,label=None):
       if 'command' in d:
         textstr=textstr+checkempty(d,'command')
       if textstr and label=="FIRE":
-        if o.portrait:
-          ax.text((xmin+xmax)*0.5, Tstart, strlim(textstr,o.labellim), ha='center', fontsize=7, rotation_mode='anchor', rotation=0, bbox=dict(facecolor='white', alpha=0.6))
-          x=xmin+0.05*(xmax-xmin)*random.random()
-          l=matplotlib.lines.Line2D([x,(xmin+xmax)*0.5],[(Tstart+Tend)*0.5,Tstart])
-          ax.add_line(l)
-          l=matplotlib.lines.Line2D([x,x],[Tstart,Tend])
-          ax.add_line(l)
-        else:
-          ax.text(Tstart, 0, strlim(textstr,o.labellim), fontsize=7, rotation_mode='anchor', rotation=45)
+        position_text(ax,textstr,d['Tall'],curve,o)
 
   for d in speaks:
     T = d['T']
     if (T>Tmin)and(T<Tmax):
       if label=="SPEAK":
-        if o.portrait:
-          ax.text((xmin+xmax)*0.5, T, strlim(d['message'],o.labellim), fontsize=6, ha='center', rotation_mode='anchor', rotation=0, bbox=dict(facecolor='white', alpha=0.6))
-          l=matplotlib.lines.Line2D([xmin,(xmin+xmax)*0.5],[T,T])
-          ax.add_line(l)
-        else:
-          ax.text(T, ymin, strlim(d['message'],o.labellim), fontsize=6, ha='left', rotation_mode='anchor', rotation=45, bbox=dict(facecolor='white', alpha=0.6))
+        position_text(ax,d['message'],[T],curve,o)
   return curve
 
 parser = argparse.ArgumentParser(description="Plot log file output from heli tutor or simply XPlane data files")
 parser.add_argument('--logfile',help='log file from XPlane (Log.txt) or output from heli_tutor.lua on XPlane Data.txt files')
 parser.add_argument('--datfile',help='data file from XPlane (Data.txt) - not required if using Log.txt while Heli Tutor is running')
 parser.add_argument('--fieldmap',help='2 column tab separated values mapping names in Data.txt to more readable var names')
-parser.add_argument('--labellim',type=int,help='Limit length of text on the plot to this many characters (default=40)',default=40)
+parser.add_argument('--labellim',type=int,help='Limit length of text on the plot to this many characters (default=50)',default=50)
 parser.add_argument('--axes',nargs='+',help='Each axes is a pair or more of values to plot in the form X,Y1,Y2,Y3')
 parser.add_argument('--labels',nargs='+',help='One additional text label per plot can be provided. i.e. SPEAK or FIRE',default=[])
 parser.add_argument('--portrait',action='store_true',help='Plots should be portrait so they span the entire height with multiple plots across')
@@ -277,7 +286,6 @@ if o.fieldmap:
   fieldmap = read_fieldmap(open(o.fieldmap))
 else:
   fieldmap = {}
-print(fieldmap)
 
 def formater(xname,yname,curve,states,fires,speaks):
     def format_coord(x,y):
@@ -310,13 +318,16 @@ fires=[]
 speaks=[]
 
 if o.datfile:
+  print(fieldmap)
   data = read_data(open(o.datfile),fieldmap)
+  for d in data:
+    print(d)
+  steps = []
+  fires = []
+  speaks = []
 
 if o.logfile:
-  print("read_log:")
   data,steps,fires,speaks = read_log(open(o.logfile),fieldmap)
-  for step in steps:
-    print(step)
 
 if data:
   if o.portrait:
@@ -329,6 +340,9 @@ if data:
   li = 0
   for ax,axesnames in zip(axes,o.axes):
     xname,yname = axesnames.split(",")
+    if o.portrait:
+      xname,yname = yname,xname
+
     try:
       label=o.labels[li]
     except IndexError:
