@@ -94,24 +94,34 @@ to the end of this file.
 There are a set of built in lua variable which are linked to the DataRefs in FlyWithLua.
 Here are those you are most likely to use noting that is some cases conversions are applied to change the default units.
 
---- | --- | ---
-Lua variable | X-Plane DataRef | Units
-LONGITUDE | sim/flightmodel/position/longitude | degrees
-LATITUDE | sim/flightmodel/position/latitude | degrees
-heading | sim/flightmodel/position/mag_psi | degrees
-airspeed | sim/flightmodel/position/indicated_airspeed
-groundspeed | sim/flightmodel/position/groundspeed
-roll | sim/flightmodel/position/phi
-roll_rate | sim/flightmodel/position/P
-pitch | sim/flightmodel/position/theta
-pitch_rate | sim/flightmodel/position/Q
-yaw | sim/flightmodel/position/beta
-yaw_rate | sim/flightmodel/position/R
-rotor_radspersec | sim/flightmodel/engine/POINT_tacrad | rads/sec
-rotor_rpm | sim/flightmodel/engine/POINT_tacrad | revs/min
-y_agl | sim/flightmodel/position/y_agl | metres
-y_agl_ft | sim/flightmodel/position/y_agl | feet
-vh_ind_fpm | sim/flightmodel/position/vh_ind_fpm | feets/min
-on_ground | sim/flightmodel/failures/onground_any | 1(on ground) or 0(in air)
---- | --- | ---
+| Lua variable | X-Plane DataRef | Units |
+| --- | --- | --- |
+| LONGITUDE | sim/flightmodel/position/longitude | degrees |
+| LATITUDE | sim/flightmodel/position/latitude | degrees |
+| ELEVATION | sim/flightmodel/position/elevation | metres |
+| elevation_ft | sim/flightmodel/position/elevation | feet |
+| heading | sim/flightmodel/position/mag_psi | degrees |
+| airspeed | sim/flightmodel/position/indicated_airspeed | knots |
+| groundspeed | sim/flightmodel/position/groundspeed | knots |
+| roll | sim/flightmodel/position/phi | degrees |
+| roll_rate | sim/flightmodel/position/P | degrees/sec |
+| pitch | sim/flightmodel/position/theta | degrees |
+| pitch_rate | sim/flightmodel/position/Q | degrees/sec |
+| yaw | sim/flightmodel/position/beta | degrees |
+| yaw_rate | sim/flightmodel/position/R | degrees/sec |
+| rotor_radspersec | sim/flightmodel/engine/POINT_tacrad | rads/sec |
+| rotor_rpm | sim/flightmodel/engine/POINT_tacrad | revs/min |
+| y_agl | sim/flightmodel/position/y_agl | metres |
+| y_agl_ft | sim/flightmodel/position/y_agl | feet |
+| vh_ind_fpm | sim/flightmodel/position/vh_ind_fpm | feets/min |
+| on_ground | sim/flightmodel/failures/onground_any | 1(on ground) or 0(in air) |
 
+The best way to access additional datarefs is to add some code to your exercise,
+e.g. steer.lua:
+
+```
+if dataref then
+  dataref("collective","sim/cockpit2/engine/actuators/prop_ratio")
+end  
+```
+You should protect the dataref() command with "if dataref" since its useful to be able to run the code outside of X-Plane when the dataref() function is not available.
