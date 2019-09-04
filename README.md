@@ -125,3 +125,48 @@ if dataref then
 end  
 ```
 You should protect the dataref() command with "if dataref" since its useful to be able to run the code outside of X-Plane when the dataref() function is not available.
+
+You can make the spoken messages a little more advanced by embedding variables within them. For instance you didn't want to just say turn right or left. You wanted to say how many degrees to turn.
+
+Modified steer.rul as follows:
+```
+msgcode	delay	message
+left	5	"turn left " ... math.floor(heading-180) ... " degrees"
+right	5	"turn right " ... math.floor(180-heading) ... " degrees"
+target	5	straight ahead
+```
+
+We surround the message with double quotes are use the standard lua syntax to join strings together with ...
+I use math.floor() otherwise the heading will be spoken with about 10 decimal places.
+
+Now, I didn't mention about the "from" and "to" fields yet. I used "start" for all of them.
+Think of this like a flowchart and in this case if the condition is trigger you end up back at the same
+place (or state). But, if we want to perform a sequence of actions we need to move to the next state when a condition is fulfilled.
+
+Say we want the pilot to takeoff, climb to 50 feet and then descend again. Lets try this:
+
+updown.msg:
+```
+msgcode	delay	message
+climb	5	climb to above 50 feet
+reached	5	you reached 50 feet
+descend	5	descend back to the ground
+landed	5	you landed. Well done!
+```
+
+updown.rul:
+```
+from	to	condition	msgcode
+state1	state1	y_agl_ft<50	climb
+state1	state2	y_agl_ft>50	reached
+state2	state2	y_agl_ft>0	descend
+state3	state3	on_ground==1	landed
+```
+
+Now there are two remaining fields in the rules file to introduce: prob and command
+The prob field allows you to specify a probability of that action firing given the condition is true.
+You can use this to randomly choose between different actions in an exercise for variety, or the use a different spoken message.
+The probabilities don't need to sum to 1, they will be normalized so they sum to 1 over all the conditions that are true at that time.
+
+And finally the "command" feels allows you to execute lua code. A good reason for doing this is to accumulate a score for evaluation, or to set a lua variable such as the current location.
+
