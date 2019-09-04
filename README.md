@@ -57,7 +57,9 @@ An exercise is structure into three parts
 Note that the messages and rules file are in columns where the first line names
 the columns and columns are tab separated.
 Here is a very simple example where we tell the pilot whether to turn right or
-left to point the aircraft on a specific bearing
+left to point the aircraft on a specific bearing.
+
+Create these files in the ht_exercises/ directory.
 
 steer.msg:
 
@@ -65,14 +67,14 @@ steer.msg:
 msgcode	delay	message
 left	5	turn left
 right	5	turn right
-straight	5	straight ahead
+target	5	straight ahead
 ```
 steer.rul:
 ```
 from	to	condition	msgcode
 start	start	heading>170	right
 start	start	heading<190	left
-start	start	(heading>170)and(heading<190)	straight
+start	start	(heading>170)and(heading<190)	target
 ```
 
 This short set of rules will instruct you to turn towards a heading of close to
@@ -80,3 +82,36 @@ This short set of rules will instruct you to turn towards a heading of close to
 target or say "straight ahead" if you are on target. Note the delay. This will
 mean that the instruction will only be repeated after 5 seconds. This provides a
 simple way to avoid very rapid repetition.
+
+You also need to add a line to the file ht_exercises/exercises.txt so it is available from the Heli Tutor plugin.
+Add the line
+
+```
+simple steering example<TAB>steer<TAB>0
+```
+to the end of this file.
+
+There are a set of built in lua variable which are linked to the DataRefs in FlyWithLua.
+Here are those you are most likely to use noting that is some cases conversions are applied to change the default units.
+
+--- | --- | ---
+Lua variable | X-Plane DataRef | Units
+LONGITUDE | sim/flightmodel/position/longitude | degrees
+LATITUDE | sim/flightmodel/position/latitude | degrees
+heading | sim/flightmodel/position/mag_psi | degrees
+airspeed | sim/flightmodel/position/indicated_airspeed
+groundspeed | sim/flightmodel/position/groundspeed
+roll | sim/flightmodel/position/phi
+roll_rate | sim/flightmodel/position/P
+pitch | sim/flightmodel/position/theta
+pitch_rate | sim/flightmodel/position/Q
+yaw | sim/flightmodel/position/beta
+yaw_rate | sim/flightmodel/position/R
+rotor_radspersec | sim/flightmodel/engine/POINT_tacrad | rads/sec
+rotor_rpm | sim/flightmodel/engine/POINT_tacrad | revs/min
+y_agl | sim/flightmodel/position/y_agl | metres
+y_agl_ft | sim/flightmodel/position/y_agl | feet
+vh_ind_fpm | sim/flightmodel/position/vh_ind_fpm | feets/min
+on_ground | sim/flightmodel/failures/onground_any | 1(on ground) or 0(in air)
+--- | --- | ---
+
