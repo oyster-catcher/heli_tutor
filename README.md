@@ -242,7 +242,7 @@ lua heli_tutor.lua ht_exercises/steer ht_exercises/steer.dat > Log.txt
 ./ht_plot.py --logfile=Log.txt --axes T,heading T,heading --labels SPEAK FIRE
 ```
 
-![alt text](https://github.com/oyster_catcher/heli_tutor/steerplot.png "Plot of steer demo")
+![alt text](https://github.com/oyster-catcher/heli_tutor/blob/master/steerplot.png "Plot of steer demo")
 
 
 If you use an X-Plane Data.txt file as input you will need to perform some mapping of the field names from this file, as they are quite verbose and not possible to use a variable names in lua, or most programming languages since they contain commas!
