@@ -256,5 +256,5 @@ Heres a more complex example where I plot from the running the circuit from exer
 ```
 ./ht_plot.py --fieldmap fieldmap.txt --logfile ht_exercises/ex11_heli_circuit.log --axes LATITUDE,LONGITUDE --labels SPEAK
 ```
-![alt text](https://github.com/oyster-catcher/heli_tutor/blob/master/circuit.png "Plot of circuit data")
+![alt text](https://github.com/oyster-catcher/heli_tutor/blob/master/images/circuit.png "Plot of circuit data")
 
