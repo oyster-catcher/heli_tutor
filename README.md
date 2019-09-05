@@ -247,7 +247,14 @@ lua heli_tutor.lua ht_exercises/steer ht_exercises/steer.dat > Log.txt
 
 If you use an X-Plane Data.txt file as input you will need to perform some mapping of the field names from this file, as they are quite verbose and not possible to use a variable names in lua, or most programming languages since they contain commas!
 
-Plotting your Session
-=====================
+Plotting in more detail
+=======================
 
+The examples using ht_plot.py above showed some fairly trivial examples. You can do much more. The trick is trying to show that data without overloading the perform viewing it, as it can get pretty complex!
+
+Heres a more complex example where I plot from the running the circuit from exercise 11 using the Data.txt file from X-Plane with LATITUDE and LONGITUDE rather than time, and show the spoken messages on the plot.
+```
+./ht_plot.py --fieldmap fieldmap.txt --logfile ht_exercises/ex11_heli_circuit.log --axes LATITUDE,LONGITUDE --labels SPEAK
+```
+![alt text](https://github.com/oyster-catcher/heli_tutor/blob/master/circuit.png "Plot of circuit data")
 
