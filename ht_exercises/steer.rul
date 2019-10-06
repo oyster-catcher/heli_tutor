@@ -1,0 +1,4 @@
+from	to	condition	msgcode
+start	start	heading<170	right
+start	start	heading>190	left
+start	start	(heading>170)and(heading<190)	target
