@@ -14,8 +14,8 @@ ELEVATION, LONGITUDE and LATITUDE.
 Some exercises for helicopter pilot are included because thats what I'm interested, but the exercise
 for any aircraft could easily be developed also.
 
-I am every so grateful for the developer of FlyByLua which this plugin relies on. I searched for a
-while for how to fulfill my idea and FLyByLua provided just the right level and power and flexibility.
+I am every so grateful to X-Friese, the developer of [FlyByLua](https://forums.x-plane.org/index.php?/files/file/38445-flywithlua-ng-next-generation-edition-for-x-plane-11-win-lin-mac/) which this plugin relies on. I searched for a
+while for how to fulfill my idea and FLyByLua provided just the right level of power, flexibility and simplicity. Its only FlyByLua that has made it all possible to non-expert users to make their own tutorial exercises without requiring the hassle of compiling code.
 
 Installing The Plugin
 =====================
